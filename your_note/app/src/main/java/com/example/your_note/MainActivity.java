@@ -15,6 +15,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import com.google.android.material.navigation.NavigationView;
+
 public class MainActivity extends AppCompatActivity {
 
     private LinearLayout notesContainer;
@@ -28,10 +30,17 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
-        ImageButton menuButton = findViewById(R.id.menu_button);
-        ImageButton createButton = findViewById(R.id.create_button);
-        ImageButton calendarButton = findViewById(R.id.calendar_button);
-        ImageButton backMenuButton = findViewById(R.id.back_menu_button);
+        NavigationView navigationView = findViewById(R.id.navigation_view);
+
+        View topToolbar = findViewById(R.id.top_toolbar);
+        ImageButton menuButton = topToolbar.findViewById(R.id.menu_button);
+
+        View bottomToolbar = findViewById(R.id.bottom_toolbar);
+        ImageButton createButton = bottomToolbar.findViewById(R.id.create_button);
+        ImageButton calendarButton = bottomToolbar.findViewById(R.id.calendar_button);
+
+        View navMenu = navigationView.getHeaderView(0);
+
         notesContainer = findViewById(R.id.notes_container);
         noteIcon = findViewById(R.id.note_icon);
         noteIconText = findViewById(R.id.note_icon_text);
@@ -42,8 +51,6 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, NoteActivity.class);
             startActivity(intent);
         });
-
-        backMenuButton.setOnClickListener(v -> drawerLayout.closeDrawer(GravityCompat.START));
 
         calendarButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, CalendarActivity.class);

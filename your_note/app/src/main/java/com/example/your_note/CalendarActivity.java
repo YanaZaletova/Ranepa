@@ -28,10 +28,14 @@ public class CalendarActivity extends AppCompatActivity {
         setContentView(R.layout.activity_calendar);
 
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
-        ImageButton menuButton = findViewById(R.id.menu_button);
-        ImageButton createButton = findViewById(R.id.create_button);
-        ImageButton notesButton = findViewById(R.id.notes_button);
         CalendarView calendarView = findViewById(R.id.calendarView);
+
+        View topToolbar = findViewById(R.id.top_toolbar);
+        ImageButton menuButton = topToolbar.findViewById(R.id.menu_button);
+
+        View bottomToolbar = findViewById(R.id.bottom_toolbar);
+        ImageButton createButton = bottomToolbar.findViewById(R.id.create_button);
+        ImageButton notesButton = bottomToolbar.findViewById(R.id.notes_button);
 
         menuButton.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
