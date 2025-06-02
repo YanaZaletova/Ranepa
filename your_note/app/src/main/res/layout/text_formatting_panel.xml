@@ -31,8 +31,7 @@
                 android:layout_height="30dp"
                 android:scaleType="centerInside"
                 android:src="@drawable/left_alignment"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Align Left" />
+                android:background="@drawable/bg_button_selector"/>
 
             <ImageButton
                 android:id="@+id/align_center"
@@ -40,8 +39,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/center_alignment"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Align Center" />
+                android:background="@drawable/bg_button_selector"/>
 
             <ImageButton
                 android:id="@+id/align_right"
@@ -49,8 +47,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/right_alignment"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Align Right" />
+                android:background="@drawable/bg_button_selector"/>
         </LinearLayout>
 
         <LinearLayout
@@ -69,8 +66,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/text_bold"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Bold" />
+                android:background="@drawable/bg_button_selector"/>
 
             <ImageButton
                 android:id="@+id/italic_button"
@@ -78,8 +74,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/text_italic"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Italic" />
+                android:background="@drawable/bg_button_selector"/>
 
             <ImageButton
                 android:id="@+id/underline_button"
@@ -87,8 +82,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/text_underline"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Underline" />
+                android:background="@drawable/bg_button_selector"/>
 
             <ImageButton
                 android:id="@+id/strike_button"
@@ -96,8 +90,7 @@
                 android:layout_height="30dp"
                 android:scaleType="center"
                 android:src="@drawable/text_strike"
-                android:background="@drawable/bg_button_selector"
-                android:contentDescription="Strikethrough" />
+                android:background="@drawable/bg_button_selector"/>
         </LinearLayout>
 
     </LinearLayout>

@@ -1,28 +1,52 @@
 package com.example.your_note;
 
+import android.Manifest;
+import android.content.ContentUris;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.style.StrikethroughSpan;
 import android.text.style.UnderlineSpan;
+import android.util.DisplayMetrics;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.ViewOutlineProvider;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
+import com.bumptech.glide.Glide;
+
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Locale;
 
 public class NoteActivity extends AppCompatActivity {
@@ -37,11 +61,22 @@ public class NoteActivity extends AppCompatActivity {
     private boolean eraserEnabled = false;
     private int currentTextStyle = Typeface.NORMAL;
 
+    private static final int REQUEST_PICK_IMAGE = 123;
+    private static final int REQUEST_IMAGE_CAPTURE = 2;
+
+    private ImageView imageOverlay;
+    private Uri photoUri;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_note);
+
+        imageOverlay = findViewById(R.id.image_overlay);
+        ImageButton btnCamera = findViewById(R.id.btn_camera);
+
+        loadRecentImages();
 
         titleInput = findViewById(R.id.title);
         noteInput = findViewById(R.id.note_input);
@@ -165,13 +200,14 @@ public class NoteActivity extends AppCompatActivity {
 
         drawingToolsPanel = findViewById(R.id.drawing_tools_panel);
 
-        FrameLayout inputContainer = findViewById(R.id.input_container);
+        FrameLayout drawingContainer = findViewById(R.id.drawing_container);
         drawingView = new DrawingView(this);
         drawingView.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
         ));
-        inputContainer.addView(drawingView);
+        drawingContainer.addView(drawingView);
+
         drawingView.setVisibility(View.GONE);
         drawingToolsPanel.setVisibility(View.GONE);
 
@@ -180,8 +216,8 @@ public class NoteActivity extends AppCompatActivity {
             boolean isDrawingMode = (drawingToolsPanel.getVisibility() == View.VISIBLE);
 
             if (isDrawingMode) {
-                drawingToolsPanel.setVisibility(View.GONE);
-                drawingView.setVisibility(View.GONE);
+                animateHide(drawingToolsPanel);
+                animateHide(drawingView);
                 noteInput.setVisibility(View.VISIBLE);
                 textFormattingPanel.setVisibility(View.VISIBLE);
 
@@ -196,8 +232,8 @@ public class NoteActivity extends AppCompatActivity {
             } else {
                 noteInput.setVisibility(View.GONE);
                 textFormattingPanel.setVisibility(View.GONE);
-                drawingToolsPanel.setVisibility(View.VISIBLE);
-                drawingView.setVisibility(View.VISIBLE);
+                animateShow(drawingToolsPanel);
+                animateShow(drawingView);
             }
         });
 
@@ -266,6 +302,36 @@ public class NoteActivity extends AppCompatActivity {
         selectColorButton(R.id.color_black);
         selectEraserButton(false);
 
+        ImageButton imageButton = findViewById(R.id.image_button);
+        View imagePanelContainer = findViewById(R.id.merge_image_panel);
+
+        int newHeight = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 300, getResources().getDisplayMetrics());
+        ViewGroup.LayoutParams params = imageOverlay.getLayoutParams();
+        params.height = newHeight;
+        params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+        imageOverlay.setLayoutParams(params);
+
+        imageOverlay.post(() -> {
+            int imageHeight = imageOverlay.getHeight();
+            noteInput.setPadding(
+                    noteInput.getPaddingLeft(),
+                    imageHeight + 16,
+                    noteInput.getPaddingRight(),
+                    noteInput.getPaddingBottom()
+            );
+        });
+
+        imageButton.setOnClickListener(v -> toggleFormattingPanel(imagePanelContainer));
+        btnCamera.setOnClickListener(v -> openCamera());
+        ImageButton addImageButton = findViewById(R.id.btn_add_image);
+        addImageButton.setOnClickListener(v -> openGallery());
+        ImageButton btnRemoveImage = findViewById(R.id.btn_remove_image);
+        btnRemoveImage.setOnClickListener(v -> {
+            imageOverlay.setImageDrawable(null);
+            imageOverlay.setVisibility(View.GONE);
+        });
+
         backButton.setOnClickListener(v -> {
             String title = titleInput.getText().toString().trim();
             String noteText = noteInput.getText().toString().trim();
@@ -290,6 +356,22 @@ public class NoteActivity extends AppCompatActivity {
         } else {
             panel.animate().alpha(0f).setDuration(200)
                     .withEndAction(() -> panel.setVisibility(View.GONE))
+                    .start();
+        }
+    }
+
+    private void animateShow(View view) {
+        if (view.getVisibility() != View.VISIBLE) {
+            view.setAlpha(0f);
+            view.setVisibility(View.VISIBLE);
+            view.animate().alpha(1f).setDuration(200).start();
+        }
+    }
+
+    private void animateHide(View view) {
+        if (view.getVisibility() == View.VISIBLE) {
+            view.animate().alpha(0f).setDuration(200)
+                    .withEndAction(() -> view.setVisibility(View.GONE))
                     .start();
         }
     }
@@ -374,6 +456,114 @@ public class NoteActivity extends AppCompatActivity {
 
     private void selectEraserButton(boolean enabled) {
         findViewById(R.id.paint_eraser).setSelected(enabled);
+    }
+
+    private void loadRecentImages() {
+        LinearLayout previewRow = findViewById(R.id.image_preview_row);
+        previewRow.removeAllViews();
+
+        String[] projection = {MediaStore.Images.Media._ID};
+        String sortOrder = MediaStore.Images.Media.DATE_ADDED + " DESC";
+
+        Cursor cursor = getContentResolver().query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                sortOrder
+        );
+
+        if (cursor != null) {
+            int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+            int count = 0;
+
+            while (cursor.moveToNext() && count < 5) {
+                long id = cursor.getLong(idColumn);
+                Uri contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
+
+                FrameLayout frame = new FrameLayout(this);
+                LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(200, 200, 1f);
+                frameParams.setMargins(8, 0, 8, 0);
+                frame.setLayoutParams(frameParams);
+
+                frame.setBackground(ContextCompat.getDrawable(this, R.drawable.rounded_outline));
+                frame.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
+                frame.setClipToOutline(true);
+
+                ImageView imageView = new ImageView(this);
+                FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                );
+                imageView.setLayoutParams(imageParams);
+                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
+                Glide.with(this).load(contentUri).into(imageView);
+
+                imageView.setOnClickListener(v -> {
+                    imageOverlay.setImageURI(contentUri);
+                    imageOverlay.setVisibility(View.VISIBLE);
+                });
+
+                frame.addView(imageView);
+                previewRow.addView(frame);
+                count++;
+            }
+            cursor.close();
+        }
+    }
+
+    private void openGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        intent.setType("image/*");
+        startActivityForResult(intent, REQUEST_PICK_IMAGE);
+    }
+
+    private void openCamera() {
+        ContentValues values = new ContentValues();
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_" + timeStamp + ".jpg");
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/YourNote");
+
+        photoUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+
+        if (photoUri != null) {
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+        } else {
+            Toast.makeText(this, "Не удалось создать файл", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            imageOverlay.setImageURI(photoUri);
+            imageOverlay.setVisibility(View.VISIBLE);
+        } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
+            Uri selectedImageUri = data.getData();
+            if (selectedImageUri != null) {
+                imageOverlay.setImageURI(selectedImageUri);
+                imageOverlay.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (grantResults.length > 0 &&
+                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            loadRecentImages();
+        } else {
+            Toast.makeText(this, "Необходимы разрешения", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private String getCurrentTime() {
