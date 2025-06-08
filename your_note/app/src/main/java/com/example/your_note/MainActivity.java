@@ -3,6 +3,7 @@ package com.example.your_note;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -21,11 +22,14 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.google.android.material.navigation.NavigationView;
 
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
 
     private LinearLayout notesContainer;
     private ImageView noteIcon;
     private TextView noteIconText;
+    private NotesDatabaseHelper dbHelper;
 
     private static final int REQUEST_PERMISSION = 100;
 
@@ -36,6 +40,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         checkPermissions();
+
+        notesContainer = findViewById(R.id.notes_container);
+
+        dbHelper = new NotesDatabaseHelper(this);
+
+        loadNotesFromDatabase();
 
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.navigation_view);
@@ -106,5 +116,60 @@ public class MainActivity extends AppCompatActivity {
                     REQUEST_PERMISSION
             );
         }
+    }
+
+    private void loadNotesFromDatabase() {
+        List<Note> notes = dbHelper.getAllNotes();
+
+        notesContainer.removeAllViews();
+
+        if (notes.isEmpty()) {
+            noteIcon.setVisibility(View.VISIBLE);
+            noteIconText.setVisibility(View.VISIBLE);
+        } else {
+            noteIcon.setVisibility(View.GONE);
+            noteIconText.setVisibility(View.GONE);
+
+            for (Note note : notes) {
+                View noteCard = createNoteCard(note);
+                notesContainer.addView(noteCard);
+            }
+        }
+    }
+
+    private View createNoteCard(Note note) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(20, 20, 20, 20);
+        card.setBackgroundResource(R.drawable.note_background);
+        card.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        TextView titleView = new TextView(this);
+        titleView.setText(note.getTitle());
+        titleView.setTypeface(null, Typeface.BOLD);
+        titleView.setTextSize(18f);
+
+        TextView dateView = new TextView(this);
+        dateView.setText(note.getDate());
+        dateView.setTextSize(12f);
+
+        TextView snippetView = new TextView(this);
+        String snippet = note.getText();
+        if (snippet.length() > 100) snippet = snippet.substring(0, 100) + "...";
+        snippetView.setText(snippet);
+
+        card.addView(titleView);
+        card.addView(dateView);
+        card.addView(snippetView);
+
+        card.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, NoteActivity.class);
+            intent.putExtra("note_id", note.getId());
+            startActivity(intent);
+        });
+
+        return card;
     }
 }

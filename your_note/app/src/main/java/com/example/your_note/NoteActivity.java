@@ -1,574 +1,699 @@
 package com.example.your_note;
 
-import android.Manifest;
-import android.content.ContentUris;
-import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
 import android.text.Editable;
+import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextWatcher;
+import android.text.style.BackgroundColorSpan;
 import android.text.style.StrikethroughSpan;
+import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
-import android.util.DisplayMetrics;
-import android.util.TypedValue;
-import android.view.Gravity;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewOutlineProvider;
 import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
-import androidx.activity.EdgeToEdge;
-import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-
-import com.bumptech.glide.Glide;
 
 import java.io.File;
-import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 
 public class NoteActivity extends AppCompatActivity {
 
-    private EditText titleInput, noteInput;
-    private TextView time;
-    private LinearLayout textFormattingPanel;
-    private int currentTextColor = Color.BLACK;
+    private LinearLayout inputField, imagePreviewRow;
 
-    private DrawingView drawingView;
-    private LinearLayout drawingToolsPanel;
-    private boolean eraserEnabled = false;
-    private int currentTextStyle = Typeface.NORMAL;
+    private LinearLayout textPanelContainer, drawingPanel, imagePanel, audioPanelContainer;
 
-    private static final int REQUEST_PICK_IMAGE = 123;
-    private static final int REQUEST_IMAGE_CAPTURE = 2;
-
+    private EditText noteInput;
+    DrawingView drawingView;
+    final boolean[] isDrawingMode = {false};
     private ImageView imageOverlay;
-    private Uri photoUri;
+    private Uri imageUri;
+    private AudioHelper audioHelper;
+    private ImageButton insertButton, audioButton, recordingButton;
+    private Layout.Alignment currentAlignment = Layout.Alignment.ALIGN_NORMAL;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_note);
 
-        imageOverlay = findViewById(R.id.image_overlay);
-        ImageButton btnCamera = findViewById(R.id.btn_camera);
+        int noteId = getIntent().getIntExtra("note_id", -1);
+        if (noteId != -1) {
+            loadNoteFromDatabase(noteId);
+        }
 
-        loadRecentImages();
-
-        titleInput = findViewById(R.id.title);
         noteInput = findViewById(R.id.note_input);
-        noteInput.setGravity(Gravity.START);
-        time = findViewById(R.id.time);
-        ImageButton backButton = findViewById(R.id.back_button);
+        noteInput.bringToFront();
+
+        textPanelContainer = findViewById(R.id.text_formatting_panel);
+        audioPanelContainer = findViewById(R.id.merge_audio_panel);
+        drawingPanel = findViewById(R.id.drawing_tools_panel);
+        imagePanel = findViewById(R.id.merge_image_panel);
 
         noteInput.addTextChangedListener(new TextWatcher() {
-            private int start   = 0;
-            private int count   = 0;
-
-            @Override
-            public void beforeTextChanged(CharSequence s, int st, int c, int after) {
-                this.start = st;
-                this.count = after;
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+            @Override public void afterTextChanged(Editable s) {
+                checkSelectionStyles();
             }
-
-            @Override
-            public void onTextChanged(CharSequence s, int st, int before, int c) { }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (count <= 0 || start < 0 || start + count > s.length()) return;
-
-                android.text.style.StyleSpan[] styleSpans = s.getSpans(start, start + count, android.text.style.StyleSpan.class);
-                for (android.text.style.StyleSpan span : styleSpans) {
-                    s.removeSpan(span);
-                }
-                UnderlineSpan[] underlineSpans = s.getSpans(start, start + count, UnderlineSpan.class);
-                for (UnderlineSpan span : underlineSpans) {
-                    s.removeSpan(span);
-                }
-                StrikethroughSpan[] strikeSpans = s.getSpans(start, start + count, StrikethroughSpan.class);
-                for (StrikethroughSpan span : strikeSpans) {
-                    s.removeSpan(span);
-                }
-                android.text.style.ForegroundColorSpan[] colorSpans = s.getSpans(start, start + count, android.text.style.ForegroundColorSpan.class);
-                for (android.text.style.ForegroundColorSpan span : colorSpans) {
-                    s.removeSpan(span);
-                }
-
-                if ((currentTextStyle & Typeface.BOLD) != 0) {
-                    s.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, start + count, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                if ((currentTextStyle & Typeface.ITALIC) != 0) {
-                    s.setSpan(new android.text.style.StyleSpan(Typeface.ITALIC), start, start + count, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                if (isUnderline) {
-                    s.setSpan(new UnderlineSpan(), start, start + count, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                if (isStrikethrough) {
-                    s.setSpan(new StrikethroughSpan(), start, start + count, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-                if (currentTextColor != Color.BLACK) {
-                    s.setSpan(new android.text.style.ForegroundColorSpan(currentTextColor), start, start + count, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-                }
-            }
-
         });
 
-        textFormattingPanel = findViewById(R.id.text_formatting_panel);
-        textFormattingPanel.setVisibility(View.GONE);
+        noteInput.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_UP) {
+                v.postDelayed(this::checkSelectionStyles, 50);
+            }
+            return false;
+        });
+
+        noteInput.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                checkSelectionStyles();
+            }
+        });
+
+        inputField = findViewById(R.id.audio_overlay);
 
         ImageButton textButton = findViewById(R.id.text_button);
-        textButton.setOnClickListener(v -> toggleFormattingPanel(textFormattingPanel));
+        audioButton = findViewById(R.id.audio_button);
 
-        ImageButton boldBtn    = findViewById(R.id.bold_button);
-        ImageButton italicBtn  = findViewById(R.id.italic_button);
+        insertButton = findViewById(R.id.insert_button);
+        recordingButton = findViewById(R.id.recording_button);
+
+        EditText noteInput = findViewById(R.id.note_input);
+        EditText searchField = findViewById(R.id.search_field);
+        ImageButton searchButton = findViewById(R.id.search_button);
+
+        searchButton.setOnClickListener(v -> {
+            if (searchField.getVisibility() == View.GONE) {
+                searchField.setVisibility(View.VISIBLE);
+                searchField.requestFocus();
+                searchButton.setSelected(true);
+            } else {
+                searchField.setVisibility(View.GONE);
+                searchButton.setSelected(false);
+                highlightSearchResults(noteInput, "");
+            }
+        });
+
+        searchField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                highlightSearchResults(noteInput, s.toString());
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        //Текстовое форматирование
+
+        textButton.setOnClickListener(v -> {
+            hideOtherPanelsExcept(textPanelContainer);
+            TextFormatting.toggleFormattingPanel(textPanelContainer);
+        });
+
+        ImageButton boldBtn = findViewById(R.id.bold_button);
+        ImageButton italicBtn = findViewById(R.id.italic_button);
         ImageButton underlineBtn = findViewById(R.id.underline_button);
-        ImageButton strikeBtn  = findViewById(R.id.strike_button);
-        ImageButton alignLeft  = findViewById(R.id.align_left);
-        ImageButton alignCenter= findViewById(R.id.align_center);
+        ImageButton strikeBtn = findViewById(R.id.strike_button);
+
+        ImageButton alignLeft = findViewById(R.id.align_left);
+        ImageButton alignCenter = findViewById(R.id.align_center);
         ImageButton alignRight = findViewById(R.id.align_right);
 
-        boldBtn.setOnClickListener(v -> toggleStyle(boldBtn, Typeface.BOLD));
-        italicBtn.setOnClickListener(v -> toggleStyle(italicBtn, Typeface.ITALIC));
-        strikeBtn.setOnClickListener(v -> toggleStrikethrough(strikeBtn));
-        underlineBtn.setOnClickListener(v -> toggleUnderline(underlineBtn));
+        alignLeft.setOnClickListener(v -> {
+            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_NORMAL);
+            TextFormatting.setAlignmentSelected(alignLeft, alignCenter, alignRight);
+            currentAlignment = Layout.Alignment.ALIGN_NORMAL;
+        });
+
+        alignCenter.setOnClickListener(v -> {
+            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_CENTER);
+            TextFormatting.setAlignmentSelected(alignCenter, alignLeft, alignRight);
+        });
+
+        alignRight.setOnClickListener(v -> {
+            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_OPPOSITE);
+            TextFormatting.setAlignmentSelected(alignRight, alignLeft, alignCenter);
+        });
+
+        boldBtn.setOnClickListener(v -> {
+            TextFormatting.toggleButton(boldBtn);
+            TextFormatting.applyBold(noteInput);
+        });
+
+        italicBtn.setOnClickListener(v -> {
+            TextFormatting.toggleButton(italicBtn);
+            TextFormatting.applyItalic(noteInput);
+        });
+
+        underlineBtn.setOnClickListener(v -> {
+            TextFormatting.toggleButton(underlineBtn);
+            TextFormatting.applyUnderline(noteInput);
+        });
+
+        strikeBtn.setOnClickListener(v -> {
+            TextFormatting.toggleButton(strikeBtn);
+            TextFormatting.applyStrikethrough(noteInput);
+        });
 
         int[] colorIds = {
                 R.id.color_red, R.id.color_orange, R.id.color_yellow, R.id.color_green,
                 R.id.color_light_blue, R.id.color_blue, R.id.color_purple, R.id.color_black
         };
+
         int[] colors = {
                 Color.RED, 0xFFFF9800, 0xFFFFFF00, Color.GREEN,
                 0xFF03A9F4, Color.BLUE, 0xFF9C27B0, Color.BLACK
         };
+
+        ImageButton[] colorButtons = new ImageButton[colorIds.length];
+
         for (int i = 0; i < colorIds.length; i++) {
             final int col = colors[i];
             final ImageButton btn = findViewById(colorIds[i]);
+            colorButtons[i] = btn;
             btn.setOnClickListener(v -> {
-                currentTextColor = col;
-                clearColorSelection();
+                TextFormatting.clearColorSelection(colorButtons);
                 btn.setSelected(true);
+                TextFormatting.applyTextColor(noteInput, col);
             });
         }
 
-        alignLeft.setOnClickListener(v -> {
-            noteInput.setGravity(Gravity.START);
-            setAlignmentSelected(alignLeft, alignCenter, alignRight);
-        });
-        alignCenter.setOnClickListener(v -> {
-            noteInput.setGravity(Gravity.CENTER_HORIZONTAL);
-            setAlignmentSelected(alignCenter, alignLeft, alignRight);
-        });
-        alignRight.setOnClickListener(v -> {
-            noteInput.setGravity(Gravity.END);
-            setAlignmentSelected(alignRight, alignLeft, alignCenter);
-        });
+        //Маркеры
 
         ImageButton checklistButton = findViewById(R.id.checklist_button);
-        checklistButton.setOnClickListener(v -> insertChecklistItem());
+        checklistButton.setOnClickListener(v -> {
+            ChecklistHelper.insertChecklistItem(noteInput);
+        });
 
-        Intent intent = getIntent();
-        String dateTime = intent.getStringExtra("time");
-        if (dateTime != null && !dateTime.isEmpty()) {
-            time.setText(dateTime);
+        //Рисование
+
+        DrawingView drawingView = findViewById(R.id.drawing_view);
+
+        int bgColor;
+        Drawable background = noteInput.getBackground();
+        if (background instanceof ColorDrawable) {
+            bgColor = ((ColorDrawable) background).getColor();
         } else {
-            time.setText(getCurrentTime());
+            bgColor = ((ColorDrawable) noteInput.getBackground().mutate()).getColor();
         }
 
-        drawingToolsPanel = findViewById(R.id.drawing_tools_panel);
+        if (bgColor == 0) bgColor = Color.WHITE;
+        drawingView.setEraserBackgroundColor(bgColor);
 
-        FrameLayout drawingContainer = findViewById(R.id.drawing_container);
-        drawingView = new DrawingView(this);
-        drawingView.setLayoutParams(new FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-        ));
-        drawingContainer.addView(drawingView);
-
-        drawingView.setVisibility(View.GONE);
-        drawingToolsPanel.setVisibility(View.GONE);
-
+        LinearLayout drawingPanel = findViewById(R.id.drawing_tools_panel);
         ImageButton drawButton = findViewById(R.id.draw_button);
+
+        ScrollView scrollView = findViewById(R.id.scroll_content);
+
         drawButton.setOnClickListener(v -> {
-            boolean isDrawingMode = (drawingToolsPanel.getVisibility() == View.VISIBLE);
+            hideOtherPanelsExcept(drawingPanel);
+            togglePanelWithAnimation(drawingPanel);
 
-            if (isDrawingMode) {
-                animateHide(drawingToolsPanel);
-                animateHide(drawingView);
-                noteInput.setVisibility(View.VISIBLE);
-                textFormattingPanel.setVisibility(View.VISIBLE);
+            if (!isDrawingMode[0]) {
+                drawingView.setVisibility(View.VISIBLE);
+                drawingView.bringToFront();
 
-                eraserEnabled = false;
-                drawingView.enableEraser(false);
-                drawingView.setPaintColor(Color.BLACK);
-                drawingView.setStrokeWidth(10f);
-                selectEraserButton(false);
-                selectColorButton(R.id.color_black);
-                selectStrokeWidthButton(R.id.paint_medium);
+                noteInput.clearFocus();
+                noteInput.setCursorVisible(false);
+                isDrawingMode[0] = true;
 
+                drawButton.setSelected(true);
+
+                Toast.makeText(this, "Режим рисования активирован. Выйти по долгому нажатию", Toast.LENGTH_LONG).show();
             } else {
-                noteInput.setVisibility(View.GONE);
-                textFormattingPanel.setVisibility(View.GONE);
-                animateShow(drawingToolsPanel);
-                animateShow(drawingView);
+                drawingView.setVisibility(View.VISIBLE);
+                drawingView.bringToFront();
             }
         });
 
-        findViewById(R.id.clean).setOnClickListener(v -> drawingView.clear());
+        drawButton.setOnLongClickListener(v -> {
+            drawingView.setVisibility(View.GONE);
+            findViewById(R.id.drawing_tools_panel).setVisibility(View.GONE);
 
-        int[] colorButtons = {
+            noteInput.bringToFront();
+            noteInput.requestFocus();
+            noteInput.setCursorVisible(true);
+
+            scrollView.bringToFront();
+
+            isDrawingMode[0] = false;
+
+            drawButton.setSelected(false);
+
+            Toast.makeText(this, "Режим рисования отключён", Toast.LENGTH_SHORT).show();
+            return true;
+        });
+
+        ImageButton paintThin = findViewById(R.id.paint_thin);
+        ImageButton paintMedium = findViewById(R.id.paint_medium);
+        ImageButton paintThick = findViewById(R.id.paint_thick);
+
+        paintThin.setOnClickListener(v -> {
+            drawingView.setStrokeWidth(5f);
+            selectPaintWidth(paintThin, paintMedium, paintThick);
+        });
+
+        paintMedium.setOnClickListener(v -> {
+            drawingView.setStrokeWidth(10f);
+            selectPaintWidth(paintMedium, paintThin, paintThick);
+        });
+
+        paintThick.setOnClickListener(v -> {
+            drawingView.setStrokeWidth(20f);
+            selectPaintWidth(paintThick, paintThin, paintMedium);
+        });
+
+        ImageButton eraserBtn = findViewById(R.id.paint_eraser);
+        eraserBtn.setOnClickListener(v -> {
+            boolean selected = !eraserBtn.isSelected();
+            eraserBtn.setSelected(selected);
+            drawingView.setEraserMode(selected);
+        });
+
+        findViewById(R.id.clean).setOnClickListener(v -> drawingView.clearCanvas());
+
+        int[] colorBtnIds = {
                 R.id.draw_color_red, R.id.draw_color_orange, R.id.draw_color_yellow,
-                R.id.draw_color_green, R.id.draw_color_light_blue, R.id.draw_color_blue,
-                R.id.draw_color_purple, R.id.draw_color_black
+                R.id.draw_color_green, R.id.draw_color_light_blue,
+                R.id.draw_color_blue, R.id.draw_color_purple, R.id.draw_color_black
         };
-        int[] colorValues = {
-                Color.RED, 0xFFFF9800, 0xFFFFFF00,
-                Color.GREEN, 0xFF03A9F4, Color.BLUE,
-                0xFF9C27B0, Color.BLACK
+
+        int[] paintColors = {
+                Color.RED, 0xFFFF9800, 0xFFFFFF00, Color.GREEN,
+                0xFF03A9F4, Color.BLUE, 0xFF9C27B0, Color.BLACK
         };
-        for (int i = 0; i < colorButtons.length; i++) {
-            final int col = colorValues[i];
-            final int btnId = colorButtons[i];
-            findViewById(btnId).setOnClickListener(v -> {
-                eraserEnabled = false;
-                drawingView.enableEraser(false);
-                drawingView.setPaintColor(col);
-                selectColorButton(btnId);
-                selectEraserButton(false);
-                selectStrokeWidthButton(getCurrentStrokeWidthButtonId());
+
+        for (int i = 0; i < colorBtnIds.length; i++) {
+            final int col = paintColors[i];
+            findViewById(colorBtnIds[i]).setOnClickListener(v -> {
+                drawingView.setColor(col);
+                drawingView.setEraserMode(false);
+                eraserBtn.setSelected(false);
             });
         }
 
-        findViewById(R.id.paint_thin).setOnClickListener(v -> {
-            drawingView.setStrokeWidth(5f);
-            selectStrokeWidthButton(R.id.paint_thin);
-            drawingView.enableEraser(eraserEnabled);
-            selectEraserButton(eraserEnabled);
-        });
-        findViewById(R.id.paint_medium).setOnClickListener(v -> {
-            drawingView.setStrokeWidth(10f);
-            selectStrokeWidthButton(R.id.paint_medium);
-            drawingView.enableEraser(eraserEnabled);
-            selectEraserButton(eraserEnabled);
-        });
-        findViewById(R.id.paint_thick).setOnClickListener(v -> {
-            drawingView.setStrokeWidth(20f);
-            selectStrokeWidthButton(R.id.paint_thick);
-            drawingView.enableEraser(eraserEnabled);
-            selectEraserButton(eraserEnabled);
-        });
+        //Изображения
 
-        findViewById(R.id.paint_eraser).setOnClickListener(v -> {
-            eraserEnabled = !eraserEnabled;
-            drawingView.enableEraser(eraserEnabled);
-            selectEraserButton(eraserEnabled);
-
-            if (eraserEnabled) {
-                clearStrokeSelection();
-                clearColorSelection();
-            } else {
-                selectColorButton(R.id.color_black);
-            }
-            selectStrokeWidthButton(getCurrentStrokeWidthButtonId());
-        });
-
-        drawingView.setPaintColor(Color.BLACK);
-        drawingView.setStrokeWidth(10f);
-        eraserEnabled = false;
-        selectStrokeWidthButton(R.id.paint_medium);
-        selectColorButton(R.id.color_black);
-        selectEraserButton(false);
+        imagePreviewRow = findViewById(R.id.image_preview_row);
+        imageOverlay = findViewById(R.id.image_overlay);
+        LinearLayout imagePanel = findViewById(R.id.merge_image_panel);
 
         ImageButton imageButton = findViewById(R.id.image_button);
-        View imagePanelContainer = findViewById(R.id.merge_image_panel);
-
-        int newHeight = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 300, getResources().getDisplayMetrics());
-        ViewGroup.LayoutParams params = imageOverlay.getLayoutParams();
-        params.height = newHeight;
-        params.width = ViewGroup.LayoutParams.MATCH_PARENT;
-        imageOverlay.setLayoutParams(params);
-
-        imageOverlay.post(() -> {
-            int imageHeight = imageOverlay.getHeight();
-            noteInput.setPadding(
-                    noteInput.getPaddingLeft(),
-                    imageHeight + 16,
-                    noteInput.getPaddingRight(),
-                    noteInput.getPaddingBottom()
-            );
+        imageButton.setOnClickListener(v -> {
+            hideOtherPanelsExcept(imagePanel);
+            togglePanelWithAnimation(imagePanel);
+            ImageHelper.loadRecentImages(this, imagePreviewRow, imageOverlay, uri -> imageUri = uri);
         });
 
-        imageButton.setOnClickListener(v -> toggleFormattingPanel(imagePanelContainer));
-        btnCamera.setOnClickListener(v -> openCamera());
-        ImageButton addImageButton = findViewById(R.id.btn_add_image);
-        addImageButton.setOnClickListener(v -> openGallery());
-        ImageButton btnRemoveImage = findViewById(R.id.btn_remove_image);
-        btnRemoveImage.setOnClickListener(v -> {
+        findViewById(R.id.btn_add_image).setOnClickListener(v -> {
+            ImageHelper.openGallery(this);
+        });
+
+        findViewById(R.id.btn_camera).setOnClickListener(v -> {
+            ImageHelper.openCamera(this);
+        });
+
+        findViewById(R.id.btn_remove_image).setOnClickListener(v -> {
             imageOverlay.setImageDrawable(null);
             imageOverlay.setVisibility(View.GONE);
+            imageUri = null;
         });
 
-        backButton.setOnClickListener(v -> {
-            String title = titleInput.getText().toString().trim();
-            String noteText = noteInput.getText().toString().trim();
-            String noteTime = time.getText().toString();
+        //Напоминания
 
-            if (!title.isEmpty() || !noteText.isEmpty()) {
-                Intent backIntent = new Intent(NoteActivity.this, MainActivity.class);
-                backIntent.putExtra("title", title);
-                backIntent.putExtra("note", noteText);
-                backIntent.putExtra("time", noteTime);
-                startActivity(backIntent);
-            }
-            finish();
+        ImageButton btnSetReminder = findViewById(R.id.reminder_button);
+        btnSetReminder.setOnClickListener(v -> {
+            ReminderHelper.showDateTimePicker(NoteActivity.this);
         });
-    }
 
-    private void toggleFormattingPanel(View panel) {
-        if (panel.getVisibility() == View.GONE) {
-            panel.setAlpha(0f);
-            panel.setVisibility(View.VISIBLE);
-            panel.animate().alpha(1f).setDuration(200).start();
-        } else {
-            panel.animate().alpha(0f).setDuration(200)
-                    .withEndAction(() -> panel.setVisibility(View.GONE))
-                    .start();
-        }
-    }
+        //Аудио
 
-    private void animateShow(View view) {
-        if (view.getVisibility() != View.VISIBLE) {
-            view.setAlpha(0f);
-            view.setVisibility(View.VISIBLE);
-            view.animate().alpha(1f).setDuration(200).start();
-        }
-    }
+        audioHelper = new AudioHelper(this, inputField);
 
-    private void animateHide(View view) {
-        if (view.getVisibility() == View.VISIBLE) {
-            view.animate().alpha(0f).setDuration(200)
-                    .withEndAction(() -> view.setVisibility(View.GONE))
-                    .start();
-        }
-    }
+        audioButton.setOnClickListener(v -> {
+            hideOtherPanelsExcept(audioPanelContainer);
+            togglePanelWithAnimation(audioPanelContainer);
+        });
 
-    private boolean isUnderline = false;
-    private boolean isStrikethrough = false;
-
-    private void toggleStyle(ImageButton button, int style) {
-        button.setSelected(!button.isSelected());
-        if (button.isSelected()) {
-            currentTextStyle |= style;
-        } else {
-            currentTextStyle &= ~style;
-        }
-    }
-
-    private void toggleUnderline(ImageButton button) {
-        isUnderline = !isUnderline;
-        button.setSelected(isUnderline);
-    }
-
-    private void toggleStrikethrough(ImageButton button) {
-        isStrikethrough = !isStrikethrough;
-        button.setSelected(isStrikethrough);
-    }
-
-
-    private void setAlignmentSelected(ImageButton selected, ImageButton... others) {
-        selected.setSelected(true);
-        for (ImageButton btn : others) btn.setSelected(false);
-    }
-
-    private void insertChecklistItem() {
-        int cursorPosition = noteInput.getSelectionStart();
-        String currentText = noteInput.getText().toString();
-        String checklistPrefix = "• ";
-        StringBuilder newText = new StringBuilder(currentText);
-        if (cursorPosition > 0 && currentText.charAt(cursorPosition - 1) != '\n') {
-            newText.insert(cursorPosition, "\n" + checklistPrefix);
-            cursorPosition += checklistPrefix.length() + 1;
-        } else {
-            newText.insert(cursorPosition, checklistPrefix);
-            cursorPosition += checklistPrefix.length();
-        }
-        noteInput.setText(newText.toString());
-        noteInput.setSelection(cursorPosition);
-    }
-
-    private int getCurrentStrokeWidthButtonId() {
-        float w = drawingView.getCurrentStrokeWidth();
-        if (w <= 5f) return R.id.paint_thin;
-        if (w <= 10f) return R.id.paint_medium;
-        return R.id.paint_thick;
-    }
-
-    private void clearStrokeSelection() {
-        findViewById(R.id.paint_thin).setSelected(false);
-        findViewById(R.id.paint_medium).setSelected(false);
-        findViewById(R.id.paint_thick).setSelected(false);
-    }
-
-    private void clearColorSelection() {
-        int[] colorButtons = {
-                R.id.color_red, R.id.color_orange, R.id.color_yellow,
-                R.id.color_green, R.id.color_light_blue, R.id.color_blue,
-                R.id.color_purple, R.id.color_black
-        };
-        for (int id : colorButtons) {
-            findViewById(id).setSelected(false);
-        }
-    }
-
-    private void selectStrokeWidthButton(int selectedId) {
-        clearStrokeSelection();
-        if (selectedId != -1) findViewById(selectedId).setSelected(true);
-    }
-
-    private void selectColorButton(int selectedId) {
-        clearColorSelection();
-        findViewById(selectedId).setSelected(true);
-    }
-
-    private void selectEraserButton(boolean enabled) {
-        findViewById(R.id.paint_eraser).setSelected(enabled);
-    }
-
-    private void loadRecentImages() {
-        LinearLayout previewRow = findViewById(R.id.image_preview_row);
-        previewRow.removeAllViews();
-
-        String[] projection = {MediaStore.Images.Media._ID};
-        String sortOrder = MediaStore.Images.Media.DATE_ADDED + " DESC";
-
-        Cursor cursor = getContentResolver().query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                projection,
-                null,
-                null,
-                sortOrder
-        );
-
-        if (cursor != null) {
-            int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
-            int count = 0;
-
-            while (cursor.moveToNext() && count < 5) {
-                long id = cursor.getLong(idColumn);
-                Uri contentUri = ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id);
-
-                FrameLayout frame = new FrameLayout(this);
-                LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(200, 200, 1f);
-                frameParams.setMargins(8, 0, 8, 0);
-                frame.setLayoutParams(frameParams);
-
-                frame.setBackground(ContextCompat.getDrawable(this, R.drawable.rounded_outline));
-                frame.setOutlineProvider(ViewOutlineProvider.BACKGROUND);
-                frame.setClipToOutline(true);
-
-                ImageView imageView = new ImageView(this);
-                FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
-                );
-                imageView.setLayoutParams(imageParams);
-                imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-                Glide.with(this).load(contentUri).into(imageView);
-
-                imageView.setOnClickListener(v -> {
-                    imageOverlay.setImageURI(contentUri);
-                    imageOverlay.setVisibility(View.VISIBLE);
-                });
-
-                frame.addView(imageView);
-                previewRow.addView(frame);
-                count++;
+        insertButton.setOnClickListener(v -> {
+            if (!audioHelper.isRecording()) {
+                audioHelper.startRecording();
+                insertButton.setAlpha(0.5f);
+            } else {
+                audioHelper.stopRecording();
+                audioHelper.insertAudioIcon(audioHelper.getAudioPath());
+                insertButton.setAlpha(1f);
             }
-            cursor.close();
-        }
-    }
+        });
 
-    private void openGallery() {
-        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-        intent.setType("image/*");
-        startActivityForResult(intent, REQUEST_PICK_IMAGE);
-    }
+        recordingButton.setOnClickListener(v -> {
+            audioHelper.selectAudioFile();
+        });
 
-    private void openCamera() {
-        ContentValues values = new ContentValues();
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, "IMG_" + timeStamp + ".jpg");
-        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
-        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/YourNote");
+        View rootView = findViewById(android.R.id.content);
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            Rect r = new Rect();
+            rootView.getWindowVisibleDisplayFrame(r);
+            int screenHeight = rootView.getRootView().getHeight();
 
-        photoUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            int keypadHeight = screenHeight - r.bottom;
+            boolean isKeyboardVisible = keypadHeight > screenHeight * 0.15;
 
-        if (photoUri != null) {
-            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-        } else {
-            Toast.makeText(this, "Не удалось создать файл", Toast.LENGTH_SHORT).show();
-        }
+            View drawingToolsPanel = findViewById(R.id.drawing_tools_panel);
+            View mergeImagePanel = findViewById(R.id.merge_image_panel);
+            View mergeAudioPanel = findViewById(R.id.merge_audio_panel);
+            View bottomBar = findViewById(R.id.bottom_bar);
+
+            if (isKeyboardVisible) {
+                drawingToolsPanel.setVisibility(View.GONE);
+                drawingView.setVisibility(View.GONE);
+                mergeImagePanel.setVisibility(View.GONE);
+                mergeAudioPanel.setVisibility(View.GONE);
+                bottomBar.setVisibility(View.GONE);
+            } else {
+                bottomBar.setVisibility(View.VISIBLE);
+            }
+        });
+
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            imageOverlay.setImageURI(photoUri);
-            imageOverlay.setVisibility(View.VISIBLE);
-        } else if (requestCode == REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
-            Uri selectedImageUri = data.getData();
-            if (selectedImageUri != null) {
-                imageOverlay.setImageURI(selectedImageUri);
+        if (requestCode == AudioHelper.REQUEST_AUDIO_FILE && resultCode == RESULT_OK && data != null) {
+            Uri audioUri = data.getData();
+            if (audioUri != null) {
+                String path = audioUri.toString();
+                audioHelper.stopPlaying(null);
+                audioHelper.setAudioPath(path);
+                audioHelper.insertAudioIcon(path);
+                Toast.makeText(this, "Аудио добавлено", Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == ImageHelper.REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
+            Uri imageUri = data.getData();
+            if (imageUri != null) {
+                imageOverlay.setImageURI(imageUri);
                 imageOverlay.setVisibility(View.VISIBLE);
+            }
+        } else if (requestCode == ImageHelper.REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            imageOverlay.setVisibility(View.VISIBLE);
+        }
+    }
+
+
+    private void checkSelectionStyles() {
+        int start = noteInput.getSelectionStart();
+        int end = noteInput.getSelectionEnd();
+        updateStyleButtonStates(start, end);
+    }
+
+    private void selectPaintWidth(ImageButton selected, ImageButton... others) {
+        selected.setSelected(true);
+        for (ImageButton b : others) {
+            b.setSelected(false);
+        }
+    }
+
+    private void updateStyleButtonStates(int start, int end) {
+        Editable text = noteInput.getText();
+
+        ImageButton boldBtn = findViewById(R.id.bold_button);
+        ImageButton italicBtn = findViewById(R.id.italic_button);
+        ImageButton underlineBtn = findViewById(R.id.underline_button);
+        ImageButton strikeBtn = findViewById(R.id.strike_button);
+
+        boldBtn.setSelected(
+                isSpanFullyApplied(text, start, end, StyleSpan.class) &&
+                        hasStyle(text, start, end, Typeface.BOLD)
+        );
+
+        italicBtn.setSelected(
+                isSpanFullyApplied(text, start, end, StyleSpan.class) &&
+                        hasStyle(text, start, end, Typeface.ITALIC)
+        );
+
+        underlineBtn.setSelected(
+                isSpanFullyApplied(text, start, end, UnderlineSpan.class)
+        );
+
+        strikeBtn.setSelected(
+                isSpanFullyApplied(text, start, end, StrikethroughSpan.class)
+        );
+
+        ImageButton alignLeft = findViewById(R.id.align_left);
+        ImageButton alignCenter = findViewById(R.id.align_center);
+        ImageButton alignRight = findViewById(R.id.align_right);
+
+        Layout layout = noteInput.getLayout();
+        if (layout != null && start < noteInput.length()) {
+            int line = layout.getLineForOffset(start);
+            Layout.Alignment alignment = layout.getParagraphAlignment(line);
+            currentAlignment = alignment;
+
+            alignLeft.setSelected(alignment == Layout.Alignment.ALIGN_NORMAL);
+            alignCenter.setSelected(alignment == Layout.Alignment.ALIGN_CENTER);
+            alignRight.setSelected(alignment == Layout.Alignment.ALIGN_OPPOSITE);
+        }
+    }
+
+    private boolean isSpanFullyApplied(Editable text, int start, int end, Class<?> spanClass) {
+        Object[] spans = text.getSpans(start, end, spanClass);
+
+        for (Object span : spans) {
+            int spanStart = text.getSpanStart(span);
+            int spanEnd = text.getSpanEnd(span);
+
+            if (spanStart <= start && spanEnd >= end) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasStyle(Editable text, int start, int end, int styleType) {
+        StyleSpan[] spans = text.getSpans(start, end, StyleSpan.class);
+
+        for (StyleSpan span : spans) {
+            int spanStart = text.getSpanStart(span);
+            int spanEnd = text.getSpanEnd(span);
+
+            if (spanStart <= start && spanEnd >= end && span.getStyle() == styleType) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void togglePanelWithAnimation(LinearLayout panel) {
+        if (panel.getVisibility() == LinearLayout.VISIBLE) {
+            panel.animate()
+                    .alpha(0f)
+                    .setDuration(200)
+                    .withEndAction(() -> panel.setVisibility(LinearLayout.GONE))
+                    .start();
+        } else {
+            panel.setAlpha(0f);
+            panel.setVisibility(LinearLayout.VISIBLE);
+            panel.animate()
+                    .alpha(1f)
+                    .setDuration(200)
+                    .start();
+        }
+    }
+
+    private void hideOtherPanelsExcept(View toShow) {
+        LinearLayout[] panels = {textPanelContainer, drawingPanel, imagePanel, audioPanelContainer};
+
+        for (LinearLayout panel : panels) {
+            if (panel != toShow && panel.getVisibility() == View.VISIBLE) {
+                TextFormatting.animateHide(panel);
             }
         }
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    private void highlightSearchResults(EditText editText, String query) {
+        String text = editText.getText().toString();
+        SpannableString spannable = new SpannableString(text);
 
-        if (grantResults.length > 0 &&
-                grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            loadRecentImages();
-        } else {
-            Toast.makeText(this, "Необходимы разрешения", Toast.LENGTH_SHORT).show();
+        BackgroundColorSpan[] spans = spannable.getSpans(0, text.length(), BackgroundColorSpan.class);
+        for (BackgroundColorSpan span : spans) {
+            spannable.removeSpan(span);
+        }
+
+        if (!query.isEmpty()) {
+            int index = text.toLowerCase().indexOf(query.toLowerCase());
+            while (index >= 0) {
+                int end = index + query.length();
+                spannable.setSpan(
+                        new BackgroundColorSpan(Color.YELLOW),
+                        index,
+                        end,
+                        Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                );
+                index = text.toLowerCase().indexOf(query.toLowerCase(), end);
+            }
+        }
+
+        editText.setText(spannable);
+        editText.setSelection(editText.length());
+    }
+
+    @Override
+    public void onBackPressed() {
+        new AlertDialog.Builder(this)
+                .setTitle("Сохранить изменения?")
+                .setMessage("Хотите сохранить заметку?")
+                .setPositiveButton("Да", (dialog, which) -> {
+                    showSaveFormatDialog();
+                })
+                .setNegativeButton("Нет", (dialog, which) -> {
+                    super.onBackPressed();
+                })
+                .show();
+    }
+
+    private void showSaveFormatDialog() {
+        String[] formats = {"Текст", "Рисунок"};
+        new AlertDialog.Builder(this)
+                .setTitle("Выберите формат сохранения")
+                .setItems(formats, (dialog, which) -> {
+                    saveNote(which == 0 ? "text" : "drawing");
+                })
+                .show();
+    }
+
+    private String getImagePathIfExists() {
+        if (imageUri != null && imageOverlay.getVisibility() == View.VISIBLE) {
+            return imageUri.toString();
+        }
+        return null;
+    }
+
+    private String getAudioPathIfExists() {
+        String path = audioHelper.getAudioPath();
+        if (path != null && !path.isEmpty()) {
+            File file = new File(path);
+            if (file.exists()) {
+                return path;
+            }
+        }
+        return null;
+    }
+
+    private void showImageIfExists(String path) {
+        if (path != null && !path.isEmpty()) {
+            imageUri = Uri.parse(path);
+            imageOverlay.setImageURI(imageUri);
+            imageOverlay.setVisibility(View.VISIBLE);
         }
     }
 
-    private String getCurrentTime() {
-        Calendar calendar = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
-        return sdf.format(calendar.getTime());
+    private void showAudioIfExists(String path) {
+        if (path != null && !path.isEmpty()) {
+            audioHelper.insertAudioIcon(path);
+        }
+    }
+
+    private void saveNote(String format) {
+        NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
+
+        String title = extractTitleFromText(noteInput.getText().toString());
+        String text = noteInput.getText().toString();
+        String date = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
+
+        String imagePath = null;
+        String audioPath = null;
+
+        Note note = new Note();
+
+        if (format.equals("drawing")) {
+            imagePath = getDrawingImagePath();
+            note.setDrawingPath(imagePath);
+        } else {
+            imagePath = getImagePathIfExists();
+            audioPath = getAudioPathIfExists();
+        }
+
+        note.setTitle(title);
+        note.setText(text);
+        note.setDate(date);
+        note.setImagePath(imagePath);
+        note.setAudioPath(audioPath);
+
+        dbHelper.addNote(note);
+
+        Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show();
+
+        super.onBackPressed();
+    }
+
+    private String getDrawingImagePath() {
+        return DrawingHelper.saveDrawing(this, drawingView);
+    }
+
+    private void loadNoteFromDatabase(int id) {
+        NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
+        Note note = dbHelper.getNoteById(id);
+
+        if (note.getDrawingPath() != null) {
+            showDrawingIfExists(note.getDrawingPath());
+        }
+
+        if (note != null) {
+            noteInput.setText(note.getText());
+            showImageIfExists(note.getImagePath());
+            showAudioIfExists(note.getAudioPath());
+        }
+    }
+
+    private void showDrawingIfExists(String path) {
+        if (path != null) {
+            Bitmap bitmap = BitmapFactory.decodeFile(path);
+            if (bitmap != null) {
+                drawingView.setBitmap(bitmap);
+            }
+        }
+    }
+
+    private String extractTitleFromText(String fullText) {
+        if (fullText == null || fullText.isEmpty()) return "Без названия";
+        String[] lines = fullText.split("\n");
+        return lines[0].length() > 20 ? lines[0].substring(0, 20) : lines[0];
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        audioHelper.release();
     }
 }

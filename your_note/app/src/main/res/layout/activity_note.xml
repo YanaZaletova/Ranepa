@@ -24,12 +24,23 @@
             android:src="@drawable/back"
             android:layout_marginStart="16dp" />
 
+        <EditText
+            android:id="@+id/search_field"
+            android:layout_width="250dp"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:hint="Поиск..."
+            android:visibility="gone"
+            android:inputType="text"
+            android:background="@color/white"
+            android:padding="8dp"/>
+
         <ImageButton
             android:id="@+id/search_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_gravity="end"
-            android:background="@android:color/transparent"
+            android:background="@drawable/bg_button_selector"
             android:src="@drawable/search"
             android:layout_marginEnd="16dp" />
     </androidx.appcompat.widget.Toolbar>
@@ -88,6 +99,14 @@
                     android:visibility="gone"
                     android:layout_marginBottom="8dp"/>
 
+                <LinearLayout
+                    android:id="@+id/audio_overlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+                </LinearLayout>
+
                 <EditText
                     android:id="@+id/note_input"
                     android:layout_width="match_parent"
@@ -102,11 +121,13 @@
             </LinearLayout>
         </ScrollView>
 
-        <View
-            android:id="@+id/drawing_placeholder"
+        <com.example.your_note.DrawingView
+            android:id="@+id/drawing_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:visibility="gone"/>
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <LinearLayout
@@ -157,6 +178,22 @@
         <include layout="@layout/merge_image_panel"/>
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/merge_audio_panel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        android:elevation="8dp"
+        android:background="#80A8FF"
+        android:padding="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottom_bar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+        <include layout="@layout/merge_audio_panel"/>
+    </LinearLayout>
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
@@ -196,7 +233,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:background="@android:color/transparent"
+                android:background="@drawable/bg_button_selector"
                 android:src="@drawable/pen"
                 android:padding="8dp"/>
 
@@ -210,7 +247,7 @@
                 android:padding="8dp"/>
 
             <ImageButton
-                android:id="@+id/timer_button"
+                android:id="@+id/reminder_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -219,7 +256,7 @@
                 android:padding="8dp"/>
 
             <ImageButton
-                android:id="@+id/voice_button"
+                android:id="@+id/audio_button"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
