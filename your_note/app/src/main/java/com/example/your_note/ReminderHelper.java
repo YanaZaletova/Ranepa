@@ -9,38 +9,35 @@ import android.content.Intent;
 import android.widget.Toast;
 
 import java.util.Calendar;
+import java.util.function.Consumer;
 
 public class ReminderHelper {
 
-    public static void showDateTimePicker(Context context) {
+    public static void showDateTimePicker(Context context, Consumer<Long> onTimeSelected) {
         Calendar calendar = Calendar.getInstance();
-        DatePickerDialog datePickerDialog = new DatePickerDialog(context,
-                (view, year, month, dayOfMonth) -> {
-                    calendar.set(Calendar.YEAR, year);
-                    calendar.set(Calendar.MONTH, month);
-                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
 
-                    TimePickerDialog timePickerDialog = new TimePickerDialog(context,
-                            (view1, hourOfDay, minute) -> {
-                                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                                calendar.set(Calendar.MINUTE, minute);
-                                calendar.set(Calendar.SECOND, 0);
-                                scheduleAlarms(context, calendar.getTimeInMillis());
-                            },
-                            calendar.get(Calendar.HOUR_OF_DAY),
-                            calendar.get(Calendar.MINUTE),
-                            true
-                    );
-                    timePickerDialog.show();
-                },
-                calendar.get(Calendar.YEAR),
-                calendar.get(Calendar.MONTH),
-                calendar.get(Calendar.DAY_OF_MONTH)
-        );
+        DatePickerDialog datePickerDialog = new DatePickerDialog(context, (view, year, month, dayOfMonth) -> {
+            calendar.set(Calendar.YEAR, year);
+            calendar.set(Calendar.MONTH, month);
+            calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
+
+            TimePickerDialog timePickerDialog = new TimePickerDialog(context, (view1, hourOfDay, minute) -> {
+                calendar.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                calendar.set(Calendar.MINUTE, minute);
+                calendar.set(Calendar.SECOND, 0);
+
+                long selectedTimeMillis = calendar.getTimeInMillis();
+                onTimeSelected.accept(selectedTimeMillis); // ← сообщаем NoteActivity
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true);
+
+            timePickerDialog.show();
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+
         datePickerDialog.show();
     }
 
-    private static void scheduleAlarms(Context context, long targetTimeMillis) {
+
+    public static void scheduleAlarms(Context context, long targetTimeMillis) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         long[] times = {
                 targetTimeMillis - 24 * 60 * 60 * 1000,

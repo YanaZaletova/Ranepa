@@ -12,8 +12,11 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -33,6 +36,8 @@ public class MainActivity extends AppCompatActivity {
 
     private static final int REQUEST_PERMISSION = 100;
 
+    private static final int REQUEST_CODE_ADD_NOTE = 1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,10 +47,10 @@ public class MainActivity extends AppCompatActivity {
         checkPermissions();
 
         notesContainer = findViewById(R.id.notes_container);
+        noteIcon = findViewById(R.id.note_icon);
+        noteIconText = findViewById(R.id.note_icon_text);
 
         dbHelper = new NotesDatabaseHelper(this);
-
-        loadNotesFromDatabase();
 
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.navigation_view);
@@ -57,17 +62,11 @@ public class MainActivity extends AppCompatActivity {
         ImageButton createButton = bottomToolbar.findViewById(R.id.create_button);
         ImageButton calendarButton = bottomToolbar.findViewById(R.id.calendar_button);
 
-        View navMenu = navigationView.getHeaderView(0);
-
-        notesContainer = findViewById(R.id.notes_container);
-        noteIcon = findViewById(R.id.note_icon);
-        noteIconText = findViewById(R.id.note_icon_text);
-
         menuButton.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
         createButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, NoteActivity.class);
-            startActivity(intent);
+            startActivityForResult(intent, REQUEST_CODE_ADD_NOTE);
         });
 
         calendarButton.setOnClickListener(v -> {
@@ -82,6 +81,25 @@ public class MainActivity extends AppCompatActivity {
 
         if ((title != null && !title.trim().isEmpty()) || (noteText != null && !noteText.trim().isEmpty())) {
             addNoteToScreen(title, noteText, time);
+        }
+
+        loadNotesFromDatabase();
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_ADD_NOTE && resultCode == RESULT_OK && data != null) {
+            int newNoteId = data.getIntExtra("new_note_id", -1);
+            if (newNoteId != -1) {
+                Note newNote = dbHelper.getNoteById(newNoteId);
+                if (newNote != null) {
+                    View noteCard = createNoteCard(newNote);
+                    notesContainer.addView(noteCard, 0);
+                    noteIcon.setVisibility(View.GONE);
+                    noteIconText.setVisibility(View.GONE);
+                }
+            }
         }
     }
 
@@ -147,16 +165,16 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         TextView titleView = new TextView(this);
-        titleView.setText(note.getTitle());
+        titleView.setText(note.getTitle() != null ? note.getTitle() : "Без названия");
         titleView.setTypeface(null, Typeface.BOLD);
         titleView.setTextSize(18f);
 
         TextView dateView = new TextView(this);
-        dateView.setText(note.getDate());
+        dateView.setText(note.getDate() != null ? note.getDate() : "");
         dateView.setTextSize(12f);
 
         TextView snippetView = new TextView(this);
-        String snippet = note.getText();
+        String snippet = note.getText() != null ? note.getText() : "";
         if (snippet.length() > 100) snippet = snippet.substring(0, 100) + "...";
         snippetView.setText(snippet);
 
@@ -170,6 +188,22 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+        card.setOnLongClickListener(v -> {
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("Удалить заметку?")
+                    .setMessage("Вы уверены, что хотите удалить эту заметку?")
+                    .setPositiveButton("Удалить", (dialog, which) -> {
+                        NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(MainActivity.this);
+                        dbHelper.deleteNote(note.getId());
+                        loadNotesFromDatabase();
+                        Toast.makeText(MainActivity.this, "Заметка удалена", Toast.LENGTH_SHORT).show();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+            return true;
+        });
+
         return card;
     }
+
 }

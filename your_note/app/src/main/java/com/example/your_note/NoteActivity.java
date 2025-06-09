@@ -34,6 +34,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -41,28 +43,36 @@ import java.util.Locale;
 public class NoteActivity extends AppCompatActivity {
 
     private LinearLayout inputField, imagePreviewRow;
-
     private LinearLayout textPanelContainer, drawingPanel, imagePanel, audioPanelContainer;
+    private int noteId = -1;
+    private boolean hasChanges() {
+        boolean titleChanged = !titleInput.getText().toString().equals(originalTitle);
+        boolean textChanged = !noteInput.getText().toString().equals(originalText);
+        boolean drawingChanged = drawingView != null && drawingView.hasDrawing();
 
-    private EditText noteInput;
+        return titleChanged || textChanged || drawingChanged;
+    }
+
+    private String originalText = "";
+    private String originalTitle = "";
+    private EditText noteInput, titleInput;
     DrawingView drawingView;
     final boolean[] isDrawingMode = {false};
     private ImageView imageOverlay;
     private Uri imageUri;
+    private long reminderTimeMillis = -1;
     private AudioHelper audioHelper;
     private ImageButton insertButton, audioButton, recordingButton;
     private Layout.Alignment currentAlignment = Layout.Alignment.ALIGN_NORMAL;
+
+    private Note note;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
 
-        int noteId = getIntent().getIntExtra("note_id", -1);
-        if (noteId != -1) {
-            loadNoteFromDatabase(noteId);
-        }
-
+        titleInput = findViewById(R.id.title);
         noteInput = findViewById(R.id.note_input);
         noteInput.bringToFront();
 
@@ -254,7 +264,7 @@ public class NoteActivity extends AppCompatActivity {
 
         drawButton.setOnLongClickListener(v -> {
             drawingView.setVisibility(View.GONE);
-            findViewById(R.id.drawing_tools_panel).setVisibility(View.GONE);
+            drawingPanel.setVisibility(View.GONE);
 
             noteInput.bringToFront();
             noteInput.requestFocus();
@@ -263,12 +273,12 @@ public class NoteActivity extends AppCompatActivity {
             scrollView.bringToFront();
 
             isDrawingMode[0] = false;
-
             drawButton.setSelected(false);
 
             Toast.makeText(this, "Режим рисования отключён", Toast.LENGTH_SHORT).show();
             return true;
         });
+
 
         ImageButton paintThin = findViewById(R.id.paint_thin);
         ImageButton paintMedium = findViewById(R.id.paint_medium);
@@ -349,8 +359,12 @@ public class NoteActivity extends AppCompatActivity {
 
         ImageButton btnSetReminder = findViewById(R.id.reminder_button);
         btnSetReminder.setOnClickListener(v -> {
-            ReminderHelper.showDateTimePicker(NoteActivity.this);
+            ReminderHelper.showDateTimePicker(NoteActivity.this, selectedTime -> {
+                reminderTimeMillis = selectedTime;
+                Toast.makeText(this, "Напоминание выбрано!", Toast.LENGTH_SHORT).show();
+            });
         });
+
 
         //Аудио
 
@@ -400,6 +414,30 @@ public class NoteActivity extends AppCompatActivity {
                 bottomBar.setVisibility(View.VISIBLE);
             }
         });
+
+        ImageButton backButton = findViewById(R.id.back_button);
+        backButton.setOnClickListener(v -> {
+            if (!hasChanges()) {
+                finish();
+                return;
+            }
+
+            new AlertDialog.Builder(NoteActivity.this)
+                    .setTitle("Сохранить изменения?")
+                    .setMessage("Хотите сохранить заметку?")
+                    .setPositiveButton("Да", (dialog, which) -> {
+                        showSaveFormatDialog();
+                    })
+                    .setNegativeButton("Нет", (dialog, which) -> {
+                        finish();
+                    })
+                    .show();
+        });
+
+        noteId = getIntent().getIntExtra("note_id", -1);
+        if (noteId != -1) {
+            loadNoteFromDatabase(noteId);
+        }
 
     }
 
@@ -567,18 +605,23 @@ public class NoteActivity extends AppCompatActivity {
         editText.setSelection(editText.length());
     }
 
-    @Override
-    public void onBackPressed() {
-        new AlertDialog.Builder(this)
-                .setTitle("Сохранить изменения?")
-                .setMessage("Хотите сохранить заметку?")
-                .setPositiveButton("Да", (dialog, which) -> {
-                    showSaveFormatDialog();
-                })
-                .setNegativeButton("Нет", (dialog, which) -> {
-                    super.onBackPressed();
-                })
-                .show();
+    private String saveDrawingToFile() {
+        if (drawingView == null) return null;
+
+        Bitmap bitmap = drawingView.getBitmap();
+        if (bitmap == null) return null;
+
+        try {
+            File file = new File(getFilesDir(), "drawing_" + System.currentTimeMillis() + ".png");
+            FileOutputStream out = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            out.flush();
+            out.close();
+            return file.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void showSaveFormatDialog() {
@@ -623,64 +666,103 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
+    private String getDrawingImagePath() {
+        DrawingView drawingView = findViewById(R.id.drawing_view);
+        Bitmap bitmap = drawingView.getBitmap();
+        if (bitmap == null) return null;
+
+        File dir = new File(getFilesDir(), "drawings");
+        if (!dir.exists()) dir.mkdirs();
+
+        String filename = "drawing_" + System.currentTimeMillis() + ".png";
+        File file = new File(dir, filename);
+
+        try (FileOutputStream out = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            return file.getAbsolutePath();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void showDrawingIfExists(String path) {
+        if (drawingView == null || path == null) return;
+
+        File file = new File(path);
+        if (file.exists()) {
+            Bitmap bitmap = BitmapFactory.decodeFile(path);
+            drawingView.setBitmap(bitmap);
+        }
+    }
+
     private void saveNote(String format) {
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
 
-        String title = extractTitleFromText(noteInput.getText().toString());
-        String text = noteInput.getText().toString();
+        String text = noteInput.getText().toString().trim();
+        String title = extractTitleFromText(text).trim();
+
+        if (title.isEmpty() && text.isEmpty()) {
+            Toast.makeText(this, "Пустая заметка не сохранена", Toast.LENGTH_SHORT).show();
+            super.onBackPressed();
+            return;
+        }
+
         String date = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
-
-        String imagePath = null;
-        String audioPath = null;
-
-        Note note = new Note();
+        String drawingPath = null;
+        String imagePath   = null;
+        String audioPath   = null;
 
         if (format.equals("drawing")) {
-            imagePath = getDrawingImagePath();
-            note.setDrawingPath(imagePath);
+            drawingPath = getDrawingImagePath();
         } else {
             imagePath = getImagePathIfExists();
             audioPath = getAudioPathIfExists();
         }
 
+        Note note = noteId != -1
+                ? dbHelper.getNoteById(noteId)
+                : new Note();
+
         note.setTitle(title);
         note.setText(text);
         note.setDate(date);
+        note.setDrawingPath(drawingPath);
         note.setImagePath(imagePath);
         note.setAudioPath(audioPath);
+        note.setReminderTimeMillis(reminderTimeMillis);
 
-        dbHelper.addNote(note);
+        if (noteId != -1) {
+            dbHelper.updateNote(note);
+        } else {
+            long newId = dbHelper.addNote(note);
+            note.setId((int)newId);
+        }
+
+        if (reminderTimeMillis > 0) {
+            ReminderHelper.scheduleAlarms(this, reminderTimeMillis);
+        }
 
         Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show();
-
+        Intent resultIntent = new Intent();
+        resultIntent.putExtra("new_note_id", note.getId());
+        setResult(RESULT_OK, resultIntent);
         super.onBackPressed();
-    }
-
-    private String getDrawingImagePath() {
-        return DrawingHelper.saveDrawing(this, drawingView);
     }
 
     private void loadNoteFromDatabase(int id) {
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
-        Note note = dbHelper.getNoteById(id);
-
-        if (note.getDrawingPath() != null) {
-            showDrawingIfExists(note.getDrawingPath());
-        }
+        note = dbHelper.getNoteById(id);
 
         if (note != null) {
+            titleInput.setText(note.getTitle());
             noteInput.setText(note.getText());
+            originalTitle = note.getTitle();
+            originalText = note.getText();
+
+            showDrawingIfExists(note.getDrawingPath());
             showImageIfExists(note.getImagePath());
             showAudioIfExists(note.getAudioPath());
-        }
-    }
-
-    private void showDrawingIfExists(String path) {
-        if (path != null) {
-            Bitmap bitmap = BitmapFactory.decodeFile(path);
-            if (bitmap != null) {
-                drawingView.setBitmap(bitmap);
-            }
         }
     }
 

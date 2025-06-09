@@ -20,7 +20,6 @@ public class DrawingView extends View {
     public void setEraserBackgroundColor(int color) {
         this.eraserColor = color;
     }
-
     private Bitmap loadedBitmap;
 
     private float strokeWidth = 5f;
@@ -34,6 +33,10 @@ public class DrawingView extends View {
             this.path = p;
             this.paint = paint;
         }
+    }
+
+    public boolean hasDrawing() {
+        return !strokes.isEmpty() || loadedBitmap != null;
     }
 
     private final List<Stroke> strokes = new ArrayList<>();
@@ -127,7 +130,11 @@ public class DrawingView extends View {
     }
 
     public Bitmap getBitmap() {
-        Bitmap bitmap = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+        int width = getWidth();
+        int height = getHeight();
+        if (width == 0 || height == 0) return null;
+
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
         draw(canvas);
         return bitmap;

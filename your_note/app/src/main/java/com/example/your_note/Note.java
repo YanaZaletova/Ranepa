@@ -7,7 +7,7 @@ public class Note {
     private String date;
     private String drawingPath;
     private String imagePath;
-    private String reminderTime;
+    private long reminderTimeMillis;
     private String audioPath;
 
     public int getId() { return id; }
@@ -16,7 +16,7 @@ public class Note {
     public String getDate() { return date; }
     public String getDrawingPath() { return drawingPath; }
     public String getImagePath() { return imagePath; }
-    public String getReminderTime() { return reminderTime; }
+    public long getReminderTimeMillis() { return reminderTimeMillis; }
     public String getAudioPath() { return audioPath; }
 
     public void setId(int id) { this.id = id; }
@@ -25,6 +25,6 @@ public class Note {
     public void setDate(String date) { this.date = date; }
     public void setDrawingPath(String drawingPath) { this.drawingPath = drawingPath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
-    public void setReminderTime(String reminderTime) { this.reminderTime = reminderTime; }
+    public void setReminderTimeMillis(long reminderTimeMillis) { this.reminderTimeMillis = reminderTimeMillis; }
     public void setAudioPath(String audioPath) { this.audioPath = audioPath; }
 }
