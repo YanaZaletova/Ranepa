@@ -2,17 +2,22 @@ package com.example.your_note;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class DrawingHelper {
-
     public static String saveDrawing(Context context, DrawingView drawingView) {
         Bitmap bitmap = drawingView.getBitmap();
 
-        File drawingsDir = new File(context.getExternalFilesDir(null), "drawings");
+        if (bitmap == null) {
+            Log.e("DrawingHelper", "getBitmap() returned null");
+            return null;
+        }
+
+        File drawingsDir = new File(context.getFilesDir(), "drawings");
         if (!drawingsDir.exists()) drawingsDir.mkdirs();
 
         String fileName = "drawing_" + System.currentTimeMillis() + ".png";
@@ -28,4 +33,5 @@ public class DrawingHelper {
         }
     }
 }
+
 

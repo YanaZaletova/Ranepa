@@ -1,4 +1,3 @@
-// DrawingView.java
 package com.example.your_note;
 
 import android.content.Context;
@@ -136,7 +135,19 @@ public class DrawingView extends View {
 
         Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
-        draw(canvas);
+
+        if (loadedBitmap != null) {
+            canvas.drawBitmap(loadedBitmap, 0, 0, null);
+        }
+
+        for (Stroke stroke : strokes) {
+            canvas.drawPath(stroke.path, stroke.paint);
+        }
+
+        if (currentPath != null) {
+            canvas.drawPath(currentPath, currentPaint);
+        }
+
         return bitmap;
     }
 

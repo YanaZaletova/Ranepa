@@ -22,6 +22,7 @@ import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.style.UnderlineSpan;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.EditText;
@@ -72,6 +73,8 @@ public class NoteActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
+
+        drawingView = findViewById(R.id.drawing_view);
 
         titleInput = findViewById(R.id.title);
         noteInput = findViewById(R.id.note_input);
@@ -230,8 +233,6 @@ public class NoteActivity extends AppCompatActivity {
 
         //Рисование
 
-        DrawingView drawingView = findViewById(R.id.drawing_view);
-
         int bgColor;
         Drawable background = noteInput.getBackground();
         if (background instanceof ColorDrawable) {
@@ -285,7 +286,6 @@ public class NoteActivity extends AppCompatActivity {
             Toast.makeText(this, "Режим рисования отключён", Toast.LENGTH_SHORT).show();
             return true;
         });
-
 
         ImageButton paintThin = findViewById(R.id.paint_thin);
         ImageButton paintMedium = findViewById(R.id.paint_medium);
@@ -612,25 +612,6 @@ public class NoteActivity extends AppCompatActivity {
         editText.setSelection(editText.length());
     }
 
-    private String saveDrawingToFile() {
-        if (drawingView == null) return null;
-
-        Bitmap bitmap = drawingView.getBitmap();
-        if (bitmap == null) return null;
-
-        try {
-            File file = new File(getFilesDir(), "drawing_" + System.currentTimeMillis() + ".png");
-            FileOutputStream out = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.flush();
-            out.close();
-            return file.getAbsolutePath();
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
     private void showSaveFormatDialog() {
         String[] formats = {"Текст", "Рисунок"};
         new AlertDialog.Builder(this)
@@ -674,7 +655,6 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private String getDrawingImagePath() {
-        DrawingView drawingView = findViewById(R.id.drawing_view);
         Bitmap bitmap = drawingView.getBitmap();
         if (bitmap == null) return null;
 
@@ -686,6 +666,7 @@ public class NoteActivity extends AppCompatActivity {
 
         try (FileOutputStream out = new FileOutputStream(file)) {
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
+            Log.d("DrawingSave", "Drawing saved to: " + file.getAbsolutePath());
             return file.getAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();
@@ -694,14 +675,31 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void showDrawingIfExists(String path) {
+        drawingView = findViewById(R.id.drawing_view);
         if (drawingView == null || path == null) return;
 
         File file = new File(path);
+        Log.d("DrawingPath", "Loading drawing from: " + path);
+
         if (file.exists()) {
             Bitmap bitmap = BitmapFactory.decodeFile(path);
-            drawingView.setBitmap(bitmap);
+            if (bitmap != null) {
+                Log.d("DrawingLoad", "Bitmap decoded successfully, size: " +
+                        bitmap.getWidth() + "x" + bitmap.getHeight());
+
+                drawingView.post(() -> {
+                    drawingView.setBitmap(bitmap);
+                    Log.d("DrawingLoad", "Bitmap set to drawingView");
+                });
+
+            } else {
+                Log.e("DrawingLoad", "Bitmap is null for path: " + path);
+            }
+        } else {
+            Log.e("DrawingLoad", "File does not exist: " + path);
         }
     }
+
 
     private void saveNote(String format) {
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
@@ -722,7 +720,16 @@ public class NoteActivity extends AppCompatActivity {
         String audioPath   = null;
 
         if (format.equals("drawing")) {
-            drawingPath = getDrawingImagePath();
+            if (drawingView != null)
+            {
+                String newDrawingPath = DrawingHelper.saveDrawing(this, drawingView);
+                Log.d("DrawingSave", "Saved path: " + newDrawingPath);
+                if (newDrawingPath != null) {
+                    drawingPath = newDrawingPath;
+                }
+            } else if (noteId != -1) {
+                drawingPath = dbHelper.getNoteById(noteId).getDrawingPath();
+            }
         } else {
             imagePath = getImagePathIfExists();
             audioPath = getAudioPathIfExists();
@@ -768,11 +775,16 @@ public class NoteActivity extends AppCompatActivity {
             originalTitle = note.getTitle();
             originalText = note.getText();
 
-            showDrawingIfExists(note.getDrawingPath());
+            String drawingPath = note.getDrawingPath();
+            Log.d("LoadNote", "Loaded drawingPath: " + drawingPath);
+            if (drawingPath != null) {
+                showDrawingIfExists(drawingPath);
+            }
             showImageIfExists(note.getImagePath());
             showAudioIfExists(note.getAudioPath());
         }
     }
+
 
     private String extractTitleFromText(String fullText) {
         if (fullText == null || fullText.isEmpty()) return "Без названия";
