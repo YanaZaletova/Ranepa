@@ -63,7 +63,7 @@
                 android:id="@+id/filter_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="16dp"
+                android:layout_marginLeft="12dp"
                 android:layout_marginTop="8dp"
                 android:background="@android:color/transparent"
                 android:src="@drawable/filter" />
@@ -76,12 +76,14 @@
             android:layout_marginTop="140dp"
             android:layout_marginBottom="160dp">
 
-            <LinearLayout
+            <GridLayout
                 android:id="@+id/notes_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp"/>
+                android:columnCount="2"
+                android:padding="16dp"
+                android:orientation="horizontal"
+                android:layout_gravity="center"/>
 
         </ScrollView>
 

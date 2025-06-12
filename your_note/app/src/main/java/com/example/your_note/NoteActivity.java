@@ -712,6 +712,11 @@ public class NoteActivity extends AppCompatActivity {
     }
 
     private void saveNote() {
+
+        if (getIntent().hasExtra("reminder_millis")) {
+            reminderTimeMillis = getIntent().getLongExtra("reminder_millis", -1);
+        }
+
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
 
         String text = Html.toHtml(noteInput.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
@@ -794,14 +799,6 @@ public class NoteActivity extends AppCompatActivity {
             showAudioIfExists(note.getAudioPath());
         }
     }
-
-
-    private String extractTitleFromText(String fullText) {
-        if (fullText == null || fullText.isEmpty()) return "Без названия";
-        String[] lines = fullText.split("\n");
-        return lines[0].length() > 20 ? lines[0].substring(0, 20) : lines[0];
-    }
-
 
     @Override
     protected void onDestroy() {

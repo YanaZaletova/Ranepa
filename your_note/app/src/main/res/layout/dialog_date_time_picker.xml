@@ -1,39 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:background="@drawable/dialog_background"
+    android:padding="24dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
 
     <ImageButton
         android:id="@+id/close_dialog_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|end"
-        android:background="?attr/selectableItemBackground"
-        android:src="@drawable/close"/>
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="end"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/close"
+        android:contentDescription="Закрыть" />
 
     <TextView
         android:id="@+id/selected_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Выбранная дата:"
-        android:textSize="18sp"
-        android:paddingBottom="10dp" />
+        android:layout_gravity=""
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp" />
 
     <Button
         android:id="@+id/pick_time_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="Выбрать время"
+        android:layout_marginTop="16dp"
         android:backgroundTint="#80A8FF"
-        android:text="Добавить время" />
+        android:textColor="@android:color/white" />
 
     <Button
         android:id="@+id/create_note_button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:text="Создать заметку"
+        android:layout_marginTop="16dp"
         android:backgroundTint="#80A8FF"
-        android:text="Создать заметку" />
+        android:textColor="@android:color/white" />
 
 </LinearLayout>
+

@@ -9,6 +9,8 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Button;
 import android.view.View;
+import android.widget.Toast;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GravityCompat;
@@ -62,7 +64,8 @@ public class CalendarActivity extends AppCompatActivity {
     private void showDateTimeDialog() {
         Dialog dialog = new Dialog(this);
         dialog.setContentView(R.layout.dialog_date_time_picker);
-        dialog.setCancelable(false);
+        dialog.setCancelable(true);
+        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
 
         TextView selectedDateView = dialog.findViewById(R.id.selected_date);
         Button pickTimeButton = dialog.findViewById(R.id.pick_time_button);
@@ -76,37 +79,39 @@ public class CalendarActivity extends AppCompatActivity {
             int hour = calendar.get(Calendar.HOUR_OF_DAY);
             int minute = calendar.get(Calendar.MINUTE);
 
-            TimePickerDialog timePickerDialog = new TimePickerDialog(this, (view, hourOfDay, minuteOfHour) -> {
+            new TimePickerDialog(this, (view, hourOfDay, minuteOfHour) -> {
                 selectedHour = hourOfDay;
                 selectedMinute = minuteOfHour;
                 pickTimeButton.setText(String.format("Время: %02d:%02d", selectedHour, selectedMinute));
-            }, hour, minute, true);
-
-            timePickerDialog.show();
+            }, hour, minute, true).show();
         });
 
         createNoteButton.setOnClickListener(v -> {
+            if (selectedHour == -1 || selectedMinute == -1) {
+                Toast.makeText(this, "Выберите время", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Calendar reminderCalendar = Calendar.getInstance();
+            String[] dateParts = selectedDate.split("\\.");
+            reminderCalendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(dateParts[0]));
+            reminderCalendar.set(Calendar.MONTH, Integer.parseInt(dateParts[1])); // 0-based
+            reminderCalendar.set(Calendar.YEAR, Integer.parseInt(dateParts[2]));
+            reminderCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
+            reminderCalendar.set(Calendar.MINUTE, selectedMinute);
+            reminderCalendar.set(Calendar.SECOND, 0);
+
+            long reminderTime = reminderCalendar.getTimeInMillis();
+
             Intent intent = new Intent(CalendarActivity.this, NoteActivity.class);
+            intent.putExtra("time", String.format("%s %02d:%02d", selectedDate, selectedHour, selectedMinute));
+            intent.putExtra("reminder_millis", reminderTime);
 
-            String dateTime = "";
-            if (!selectedDate.isEmpty()) {
-                dateTime += selectedDate;
-            }
-            if (selectedHour != -1 && selectedMinute != -1) {
-                if (!dateTime.isEmpty()) {
-                    dateTime += " ";
-                }
-                dateTime += String.format("%02d:%02d", selectedHour, selectedMinute);
-            }
-
-            intent.putExtra("time", dateTime);
             startActivity(intent);
             dialog.dismiss();
         });
 
-
         closeButton.setOnClickListener(v -> dialog.dismiss());
-
         dialog.show();
     }
 }

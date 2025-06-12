@@ -3,12 +3,17 @@ package com.example.your_note;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.graphics.Typeface;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.Html;
+import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.GridLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -30,7 +35,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    private LinearLayout notesContainer;
+    private GridLayout notesContainer;
     private ImageView noteIcon;
     private TextView noteIconText;
     private NotesDatabaseHelper dbHelper;
@@ -157,31 +162,77 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private View createNoteCard(Note note) {
+        int cardSize = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 180, getResources().getDisplayMetrics());
+
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(20, 20, 20, 20);
+        card.setPadding(12, 12, 12, 12);
         card.setBackgroundResource(R.drawable.note_background);
-        card.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.setGravity(Gravity.TOP);
+        card.setClipToPadding(false);
+
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.setMargins(16, 16, 16, 16);
+        params.width = cardSize;
+        params.height = cardSize;
+        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        card.setLayoutParams(params);
 
         TextView titleView = new TextView(this);
         titleView.setText(note.getTitle() != null ? note.getTitle() : "Без названия");
         titleView.setTypeface(null, Typeface.BOLD);
-        titleView.setTextSize(18f);
-
-        TextView dateView = new TextView(this);
-        dateView.setText(note.getDate() != null ? note.getDate() : "");
-        dateView.setTextSize(12f);
-
-        TextView snippetView = new TextView(this);
-        String snippet = note.getText() != null ? note.getText() : "";
-        if (snippet.length() > 100) snippet = snippet.substring(0, 100) + "...";
-        snippetView.setText(Html.fromHtml(snippet, Html.FROM_HTML_MODE_LEGACY));
-
+        titleView.setTextSize(14f);
+        titleView.setMaxLines(1);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
         card.addView(titleView);
-        card.addView(dateView);
-        card.addView(snippetView);
+
+        if (note.getDate() != null) {
+            TextView dateView = new TextView(this);
+            dateView.setText(note.getDate());
+            dateView.setTextSize(10f);
+            dateView.setTextColor(Color.GRAY);
+            dateView.setMaxLines(1);
+            card.addView(dateView);
+        }
+
+        if (note.getText() != null && !note.getText().trim().isEmpty()) {
+            TextView textView = new TextView(this);
+            textView.setText(Html.fromHtml(note.getText(), Html.FROM_HTML_MODE_LEGACY));
+            textView.setTextSize(12f);
+            textView.setMaxLines(3);
+            textView.setEllipsize(TextUtils.TruncateAt.END);
+            card.addView(textView);
+        }
+
+        if (note.getDrawingPath() != null && !note.getDrawingPath().isEmpty()) {
+            ImageView drawingView = new ImageView(this);
+            drawingView.setImageURI(Uri.parse(note.getDrawingPath()));
+            drawingView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            drawingView.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 80
+            ));
+            card.addView(drawingView);
+        }
+
+        if (note.getImagePath() != null && !note.getImagePath().isEmpty()) {
+            ImageView imageView = new ImageView(this);
+            imageView.setImageURI(Uri.parse(note.getImagePath()));
+            imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            imageView.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 80
+            ));
+            card.addView(imageView);
+        }
+
+        if (note.getAudioPath() != null && !note.getAudioPath().isEmpty()) {
+            ImageView audioIcon = new ImageView(this);
+            audioIcon.setImageResource(R.drawable.audio_recording);
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(40, 40);
+            iconParams.gravity = Gravity.START;
+            audioIcon.setLayoutParams(iconParams);
+            card.addView(audioIcon);
+        }
 
         card.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, NoteActivity.class);
@@ -194,7 +245,6 @@ public class MainActivity extends AppCompatActivity {
                     .setTitle("Удалить заметку?")
                     .setMessage("Вы уверены, что хотите удалить эту заметку?")
                     .setPositiveButton("Удалить", (dialog, which) -> {
-                        NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(MainActivity.this);
                         dbHelper.deleteNote(note.getId());
                         loadNotesFromDatabase();
                         Toast.makeText(MainActivity.this, "Заметка удалена", Toast.LENGTH_SHORT).show();
@@ -206,5 +256,6 @@ public class MainActivity extends AppCompatActivity {
 
         return card;
     }
+
 
 }

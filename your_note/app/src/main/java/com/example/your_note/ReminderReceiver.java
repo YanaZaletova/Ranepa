@@ -49,6 +49,5 @@ public class ReminderReceiver extends BroadcastReceiver {
 
         notificationManager.notify((int) System.currentTimeMillis(), builder.build());
     }
-
 }
 
