@@ -33,6 +33,11 @@ public class DrawingView extends View {
             this.paint = paint;
         }
     }
+    private boolean isEditable = false;
+
+    public void setEditable(boolean editable) {
+        this.isEditable = editable;
+    }
 
     public boolean hasDrawing() {
         return !strokes.isEmpty() || loadedBitmap != null;
@@ -104,7 +109,7 @@ public class DrawingView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if (getVisibility() != VISIBLE) return false;
+        if (!isEditable) return false;
         float x = event.getX(), y = event.getY();
 
         switch (event.getAction()) {

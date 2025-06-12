@@ -27,7 +27,7 @@ public class ReminderHelper {
                 calendar.set(Calendar.SECOND, 0);
 
                 long selectedTimeMillis = calendar.getTimeInMillis();
-                onTimeSelected.accept(selectedTimeMillis); // ← сообщаем NoteActivity
+                onTimeSelected.accept(selectedTimeMillis);
             }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true);
 
             timePickerDialog.show();
@@ -37,7 +37,7 @@ public class ReminderHelper {
     }
 
 
-    public static void scheduleAlarms(Context context, long targetTimeMillis) {
+    public static void scheduleAlarms(Context context, long targetTimeMillis, int noteId, String noteText) {
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         long[] times = {
                 targetTimeMillis - 24 * 60 * 60 * 1000,
@@ -50,11 +50,12 @@ public class ReminderHelper {
             if (triggerAtMillis < System.currentTimeMillis()) continue;
 
             Intent intent = new Intent(context, ReminderReceiver.class);
-            intent.putExtra("note_text", "У вас есть запланированная заметка");
+            intent.putExtra("note_id", noteId);
+            intent.putExtra("note_text", noteText);
 
             PendingIntent pendingIntent = PendingIntent.getBroadcast(
                     context,
-                    i,
+                    noteId * 10 + i,  // уникальный requestCode
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
             );

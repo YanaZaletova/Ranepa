@@ -38,6 +38,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -64,7 +66,7 @@ public class NoteActivity extends AppCompatActivity {
     private Uri imageUri;
     private long reminderTimeMillis = -1;
     private AudioHelper audioHelper;
-    private ImageButton insertButton, audioButton, recordingButton;
+    private ImageButton insertButton, audioButton, recordingButton, removeButton;
     private Layout.Alignment currentAlignment = Layout.Alignment.ALIGN_NORMAL;
 
     private Note note;
@@ -112,6 +114,7 @@ public class NoteActivity extends AppCompatActivity {
         audioButton = findViewById(R.id.audio_button);
 
         insertButton = findViewById(R.id.insert_button);
+        removeButton = findViewById(R.id.remove_audio_button);
         recordingButton = findViewById(R.id.recording_button);
 
         EditText noteInput = findViewById(R.id.note_input);
@@ -250,6 +253,7 @@ public class NoteActivity extends AppCompatActivity {
         ScrollView scrollView = findViewById(R.id.scroll_content);
 
         drawButton.setOnClickListener(v -> {
+            drawingView.setEditable(true);
             hideOtherPanelsExcept(drawingPanel);
             togglePanelWithAnimation(drawingPanel);
 
@@ -271,7 +275,8 @@ public class NoteActivity extends AppCompatActivity {
         });
 
         drawButton.setOnLongClickListener(v -> {
-            drawingView.setVisibility(View.GONE);
+            drawingView.setEditable(false);
+            drawingView.setVisibility(View.VISIBLE);
             drawingPanel.setVisibility(View.GONE);
 
             noteInput.bringToFront();
@@ -372,7 +377,6 @@ public class NoteActivity extends AppCompatActivity {
             });
         });
 
-
         //Аудио
 
         audioHelper = new AudioHelper(this, inputField);
@@ -397,6 +401,10 @@ public class NoteActivity extends AppCompatActivity {
             audioHelper.selectAudioFile();
         });
 
+        removeButton.setOnClickListener(v -> {
+            audioHelper.removeAudio();
+        });
+
         View rootView = findViewById(android.R.id.content);
         rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
             Rect r = new Rect();
@@ -413,7 +421,6 @@ public class NoteActivity extends AppCompatActivity {
 
             if (isKeyboardVisible) {
                 drawingToolsPanel.setVisibility(View.GONE);
-                drawingView.setVisibility(View.GONE);
                 mergeImagePanel.setVisibility(View.GONE);
                 mergeAudioPanel.setVisibility(View.GONE);
                 bottomBar.setVisibility(View.GONE);
@@ -433,7 +440,7 @@ public class NoteActivity extends AppCompatActivity {
                     .setTitle("Сохранить изменения?")
                     .setMessage("Хотите сохранить заметку?")
                     .setPositiveButton("Да", (dialog, which) -> {
-                        showSaveFormatDialog();
+                        saveNote();
                     })
                     .setNegativeButton("Нет", (dialog, which) -> {
                         finish();
@@ -455,11 +462,15 @@ public class NoteActivity extends AppCompatActivity {
         if (requestCode == AudioHelper.REQUEST_AUDIO_FILE && resultCode == RESULT_OK && data != null) {
             Uri audioUri = data.getData();
             if (audioUri != null) {
-                String path = audioUri.toString();
-                audioHelper.stopPlaying(null);
-                audioHelper.setAudioPath(path);
-                audioHelper.insertAudioIcon(path);
-                Toast.makeText(this, "Аудио добавлено", Toast.LENGTH_SHORT).show();
+                String copiedPath = copyAudioToLocalStorage(audioUri);
+                if (copiedPath != null) {
+                    audioHelper.stopPlaying(null);
+                    audioHelper.setAudioPath(copiedPath);
+                    audioHelper.insertAudioIcon(copiedPath);
+                    Toast.makeText(this, "Аудио добавлено", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "Ошибка при добавлении аудио", Toast.LENGTH_SHORT).show();
+                }
             }
         } else if (requestCode == ImageHelper.REQUEST_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
             Uri imageUri = data.getData();
@@ -612,16 +623,6 @@ public class NoteActivity extends AppCompatActivity {
         editText.setSelection(editText.length());
     }
 
-    private void showSaveFormatDialog() {
-        String[] formats = {"Текст", "Рисунок"};
-        new AlertDialog.Builder(this)
-                .setTitle("Выберите формат сохранения")
-                .setItems(formats, (dialog, which) -> {
-                    saveNote(which == 0 ? "text" : "drawing");
-                })
-                .show();
-    }
-
     private String getImagePathIfExists() {
         if (imageUri != null && imageOverlay.getVisibility() == View.VISIBLE) {
             return imageUri.toString();
@@ -654,25 +655,35 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
-    private String getDrawingImagePath() {
-        Bitmap bitmap = drawingView.getBitmap();
-        if (bitmap == null) return null;
+    private String copyAudioToLocalStorage(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            if (inputStream == null) return null;
 
-        File dir = new File(getFilesDir(), "drawings");
-        if (!dir.exists()) dir.mkdirs();
+            File audioDir = new File(getExternalFilesDir(null), "audio_notes");
+            if (!audioDir.exists()) audioDir.mkdirs();
 
-        String filename = "drawing_" + System.currentTimeMillis() + ".png";
-        File file = new File(dir, filename);
+            String fileName = "imported_" + System.currentTimeMillis() + ".3gp";
+            File outFile = new File(audioDir, fileName);
 
-        try (FileOutputStream out = new FileOutputStream(file)) {
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            Log.d("DrawingSave", "Drawing saved to: " + file.getAbsolutePath());
-            return file.getAbsolutePath();
+            OutputStream outputStream = new FileOutputStream(outFile);
+
+            byte[] buffer = new byte[4096];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+
+            inputStream.close();
+            outputStream.close();
+
+            return outFile.getAbsolutePath();
         } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
     }
+
 
     private void showDrawingIfExists(String path) {
         drawingView = findViewById(R.id.drawing_view);
@@ -700,8 +711,7 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
-
-    private void saveNote(String format) {
+    private void saveNote() {
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
 
         String text = Html.toHtml(noteInput.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
@@ -719,21 +729,16 @@ public class NoteActivity extends AppCompatActivity {
         String imagePath   = null;
         String audioPath   = null;
 
-        if (format.equals("drawing")) {
-            if (drawingView != null)
-            {
-                String newDrawingPath = DrawingHelper.saveDrawing(this, drawingView);
-                Log.d("DrawingSave", "Saved path: " + newDrawingPath);
-                if (newDrawingPath != null) {
-                    drawingPath = newDrawingPath;
-                }
-            } else if (noteId != -1) {
-                drawingPath = dbHelper.getNoteById(noteId).getDrawingPath();
+        if (drawingView != null) {
+            String newDrawingPath = DrawingHelper.saveDrawing(this, drawingView);
+            Log.d("DrawingSave", "Saved path: " + newDrawingPath);
+            if (newDrawingPath != null) {
+                drawingPath = newDrawingPath;
             }
-        } else {
-            imagePath = getImagePathIfExists();
-            audioPath = getAudioPathIfExists();
         }
+
+        imagePath = getImagePathIfExists();
+        audioPath = getAudioPathIfExists();
 
         Note note = noteId != -1
                 ? dbHelper.getNoteById(noteId)
@@ -755,7 +760,12 @@ public class NoteActivity extends AppCompatActivity {
         }
 
         if (reminderTimeMillis > 0) {
-            ReminderHelper.scheduleAlarms(this, reminderTimeMillis);
+            ReminderHelper.scheduleAlarms(
+                    this,
+                    reminderTimeMillis,
+                    note.getId(),
+                    title.isEmpty() ? "Заметка без названия" : title
+            );
         }
 
         Toast.makeText(this, "Заметка сохранена", Toast.LENGTH_SHORT).show();

@@ -47,6 +47,22 @@
                 android:scaleType="centerInside" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_format_group"
+            android:padding="8dp"
+            android:layout_marginEnd="8dp">
+
+            <ImageButton
+                android:id="@+id/remove_audio_button"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:src="@drawable/remove_audio"
+                android:background="@drawable/bg_button_selector"
+                android:scaleType="centerInside" />
+        </LinearLayout>
+
     </LinearLayout>
 </merge>
 

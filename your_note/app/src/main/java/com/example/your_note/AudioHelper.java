@@ -139,6 +139,25 @@ public class AudioHelper {
 
         currentAudioIcon = audioIcon;
     }
+    public void removeAudio() {
+        stopPlaying(currentAudioIcon);
+
+        if (currentAudioIcon != null && inputField.indexOfChild(currentAudioIcon) != -1) {
+            inputField.removeView(currentAudioIcon);
+            currentAudioIcon = null;
+        }
+
+        if (audioPath != null) {
+            File file = new File(audioPath);
+            if (file.exists() && audioPath.contains(activity.getExternalFilesDir(null).getAbsolutePath())) {
+                file.delete();
+            }
+        }
+
+        audioPath = null;
+
+        Toast.makeText(activity, "Аудио удалено", Toast.LENGTH_SHORT).show();
+    }
 
 
     public void release() {
