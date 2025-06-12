@@ -1,7 +1,9 @@
 package com.example.your_note;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -30,10 +32,14 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -69,11 +75,14 @@ public class NoteActivity extends AppCompatActivity {
     private ImageButton insertButton, audioButton, recordingButton, removeButton;
     private Layout.Alignment currentAlignment = Layout.Alignment.ALIGN_NORMAL;
 
+    private String category;
+
     private Note note;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_note);
 
         drawingView = findViewById(R.id.drawing_view);
@@ -81,11 +90,21 @@ public class NoteActivity extends AppCompatActivity {
         titleInput = findViewById(R.id.title);
         noteInput = findViewById(R.id.note_input);
         noteInput.bringToFront();
+        category = getIntent().getStringExtra("category");
 
         textPanelContainer = findViewById(R.id.text_formatting_panel);
         audioPanelContainer = findViewById(R.id.merge_audio_panel);
         drawingPanel = findViewById(R.id.drawing_tools_panel);
         imagePanel = findViewById(R.id.merge_image_panel);
+
+        TextView timeTextView = findViewById(R.id.time);
+
+        String creationDate = getIntent().getStringExtra("creationDate");
+        if (creationDate != null) {
+            timeTextView.setText(creationDate);
+        } else {
+            timeTextView.setText("Дата не указана");
+        }
 
         noteInput.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -388,6 +407,15 @@ public class NoteActivity extends AppCompatActivity {
 
         insertButton.setOnClickListener(v -> {
             if (!audioHelper.isRecording()) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                            new String[]{Manifest.permission.RECORD_AUDIO},
+                            1001);
+                } else {
+                    audioHelper.startRecording();
+                }
+
                 audioHelper.startRecording();
                 insertButton.setAlpha(0.5f);
             } else {
@@ -684,7 +712,6 @@ public class NoteActivity extends AppCompatActivity {
         }
     }
 
-
     private void showDrawingIfExists(String path) {
         drawingView = findViewById(R.id.drawing_view);
         if (drawingView == null || path == null) return;
@@ -722,11 +749,14 @@ public class NoteActivity extends AppCompatActivity {
         String text = Html.toHtml(noteInput.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
         String title = titleInput.getText().toString().trim();
 
-
         if (title.isEmpty() && text.isEmpty()) {
             Toast.makeText(this, "Пустая заметка не сохранена", Toast.LENGTH_SHORT).show();
             super.onBackPressed();
             return;
+        }
+
+        if (title.isEmpty()) {
+            title = "Без названия";
         }
 
         String date = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
@@ -756,6 +786,7 @@ public class NoteActivity extends AppCompatActivity {
         note.setImagePath(imagePath);
         note.setAudioPath(audioPath);
         note.setReminderTimeMillis(reminderTimeMillis);
+        note.setCategory(category);
 
         if (noteId != -1) {
             dbHelper.updateNote(note);
@@ -797,6 +828,18 @@ public class NoteActivity extends AppCompatActivity {
             }
             showImageIfExists(note.getImagePath());
             showAudioIfExists(note.getAudioPath());
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1001) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                audioHelper.startRecording();
+            } else {
+                Toast.makeText(this, "Разрешение на запись не предоставлено", Toast.LENGTH_SHORT).show();
+            }
         }
     }
 

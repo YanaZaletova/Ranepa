@@ -11,8 +11,7 @@
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="80dp"
-        android:paddingTop="20dp"
+        android:layout_height="60dp"
         android:background="#80A8FF"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -196,8 +195,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/bottom_bar"
         android:layout_width="match_parent"
-        android:layout_height="110dp"
-        android:paddingBottom="50dp"
+        android:layout_height="60dp"
         android:background="#80A8FF"
         app:layout_constraintBottom_toBottomOf="parent">
 

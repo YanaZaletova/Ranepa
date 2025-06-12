@@ -1,8 +1,10 @@
 package com.example.your_note;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
@@ -10,6 +12,8 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,6 +37,12 @@ public class AudioHelper {
     }
 
     public void startRecording() {
+        if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(activity, "Нет разрешения на запись аудио", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         try {
             File audioDir = new File(activity.getExternalFilesDir(null), "audio_notes");
             if (!audioDir.exists()) audioDir.mkdirs();
@@ -47,6 +57,8 @@ public class AudioHelper {
             recorder.prepare();
             recorder.start();
             isRecording = true;
+
+            Toast.makeText(activity, "Запись началась", Toast.LENGTH_SHORT).show();
 
         } catch (IOException e) {
             e.printStackTrace();

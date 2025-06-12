@@ -7,38 +7,53 @@
     android:layout_height="80dp"
     android:background="#80A8FF">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:paddingTop="20dp"
-            android:background="#80A8FF"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="1.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:paddingTop="20dp"
+        android:background="#80A8FF"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingEnd="12dp">
 
             <ImageButton
                 android:id="@+id/menu_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginRight="12dp"
                 android:background="@android:color/transparent"
-                android:src="@drawable/menu"
-                android:focusable="true"
-                android:clickable="true"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
+                android:src="@drawable/menu"/>
+
+            <EditText
+                android:id="@+id/search_field"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Поиск..."
+                android:visibility="invisible"
+                android:singleLine="true"
+                android:background="@android:color/transparent"
+                android:textColor="#fff"
+                android:padding="4dp"
+                android:inputType="text"
+                android:textColorHint="#BBFFFFFF"/>
 
             <ImageButton
                 android:id="@+id/search_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginRight="12dp"
-                android:background="@android:color/transparent"
-                android:src="@drawable/search"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"/>
-        </androidx.appcompat.widget.Toolbar>
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginLeft="12dp"
+                android:background="@drawable/bg_button_selector"
+                android:src="@drawable/search" />
+        </LinearLayout>
+    </androidx.appcompat.widget.Toolbar>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
