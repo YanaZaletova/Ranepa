@@ -290,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
 
     private View createNoteCard(Note note, String highlightQuery) {
         int cardSize = (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, 180, getResources().getDisplayMetrics());
+                TypedValue.COMPLEX_UNIT_DIP, 160, getResources().getDisplayMetrics());
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -300,10 +300,10 @@ public class MainActivity extends AppCompatActivity {
         card.setClipToPadding(false);
 
         GridLayout.LayoutParams params = new GridLayout.LayoutParams();
-        params.setMargins(16, 16, 16, 16);
         params.width = cardSize;
         params.height = cardSize;
-        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        params.setMargins(16, 16, 16, 16);
+        params.setGravity(Gravity.CENTER_HORIZONTAL);
         card.setLayoutParams(params);
 
         TextView titleView = new TextView(this);
@@ -358,9 +358,10 @@ public class MainActivity extends AppCompatActivity {
             ImageView drawingView = new ImageView(this);
             drawingView.setImageURI(Uri.parse(note.getDrawingPath()));
             drawingView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            int heightPx = (int) TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
             drawingView.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 50, 50
-            ));
+                    ViewGroup.LayoutParams.MATCH_PARENT, heightPx));
             card.addView(drawingView);
         }
 
@@ -368,9 +369,10 @@ public class MainActivity extends AppCompatActivity {
             ImageView imageView = new ImageView(this);
             imageView.setImageURI(Uri.parse(note.getImagePath()));
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            int heightPx = (int) TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
             imageView.setLayoutParams(new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 50, 50
-            ));
+                    ViewGroup.LayoutParams.MATCH_PARENT, heightPx));
             card.addView(imageView);
         }
 
@@ -378,13 +380,10 @@ public class MainActivity extends AppCompatActivity {
             ImageView audioIcon = new ImageView(this);
             audioIcon.setImageResource(R.drawable.audio_recording);
             audioIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-
-            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    100
-            );
-            iconParams.gravity = Gravity.CENTER;
-            audioIcon.setLayoutParams(iconParams);
+            int heightPx = (int) TypedValue.applyDimension(
+                    TypedValue.COMPLEX_UNIT_DIP, 100, getResources().getDisplayMetrics());
+            audioIcon.setLayoutParams(new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, heightPx));
             card.addView(audioIcon);
         }
 

@@ -29,17 +29,11 @@ public class CalendarActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_calendar);
 
-        DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
         CalendarView calendarView = findViewById(R.id.calendarView);
-
-        View topToolbar = findViewById(R.id.top_toolbar);
-        ImageButton menuButton = topToolbar.findViewById(R.id.menu_button);
 
         View bottomToolbar = findViewById(R.id.bottom_toolbar);
         ImageButton createButton = bottomToolbar.findViewById(R.id.create_button);
         ImageButton notesButton = bottomToolbar.findViewById(R.id.notes_button);
-
-        menuButton.setOnClickListener(v -> drawerLayout.openDrawer(GravityCompat.START));
 
         createButton.setOnClickListener(v -> {
             Intent intent = new Intent(CalendarActivity.this, NoteActivity.class);
@@ -95,7 +89,7 @@ public class CalendarActivity extends AppCompatActivity {
             Calendar reminderCalendar = Calendar.getInstance();
             String[] dateParts = selectedDate.split("\\.");
             reminderCalendar.set(Calendar.DAY_OF_MONTH, Integer.parseInt(dateParts[0]));
-            reminderCalendar.set(Calendar.MONTH, Integer.parseInt(dateParts[1])); // 0-based
+            reminderCalendar.set(Calendar.MONTH, Integer.parseInt(dateParts[1]));
             reminderCalendar.set(Calendar.YEAR, Integer.parseInt(dateParts[2]));
             reminderCalendar.set(Calendar.HOUR_OF_DAY, selectedHour);
             reminderCalendar.set(Calendar.MINUTE, selectedMinute);

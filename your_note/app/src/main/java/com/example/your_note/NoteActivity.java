@@ -77,6 +77,8 @@ public class NoteActivity extends AppCompatActivity {
 
     private String category;
 
+    private TextView timeTextView;
+
     private Note note;
 
     @Override
@@ -97,7 +99,7 @@ public class NoteActivity extends AppCompatActivity {
         drawingPanel = findViewById(R.id.drawing_tools_panel);
         imagePanel = findViewById(R.id.merge_image_panel);
 
-        TextView timeTextView = findViewById(R.id.time);
+        timeTextView = findViewById(R.id.time);
 
         String creationDate = getIntent().getStringExtra("creationDate");
         if (creationDate != null) {
@@ -759,7 +761,14 @@ public class NoteActivity extends AppCompatActivity {
             title = "Без названия";
         }
 
-        String date = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
+        String date;
+        if (noteId != -1) {
+            Note existingNote = dbHelper.getNoteById(noteId);
+            date = existingNote != null ? existingNote.getDate() : new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
+        } else {
+            date = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date());
+        }
+
         String drawingPath = null;
         String imagePath   = null;
         String audioPath   = null;
@@ -818,6 +827,11 @@ public class NoteActivity extends AppCompatActivity {
         if (note != null) {
             titleInput.setText(note.getTitle());
             noteInput.setText(Html.fromHtml(note.getText(), Html.FROM_HTML_MODE_LEGACY));
+            if (note.getDate() != null) {
+                timeTextView.setText(note.getDate());
+            } else {
+                timeTextView.setText("Дата не указана");
+            }
             originalTitle = note.getTitle();
             originalText = note.getText();
 
