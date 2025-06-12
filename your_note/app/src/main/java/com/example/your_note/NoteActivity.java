@@ -12,6 +12,7 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Html;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -151,34 +152,40 @@ public class NoteActivity extends AppCompatActivity {
         ImageButton underlineBtn = findViewById(R.id.underline_button);
         ImageButton strikeBtn = findViewById(R.id.strike_button);
 
-        ImageButton alignLeft = findViewById(R.id.align_left);
-        ImageButton alignCenter = findViewById(R.id.align_center);
-        ImageButton alignRight = findViewById(R.id.align_right);
+//        ImageButton alignLeft = findViewById(R.id.align_left);
+//        ImageButton alignCenter = findViewById(R.id.align_center);
+//        ImageButton alignRight = findViewById(R.id.align_right);
 
-        alignLeft.setOnClickListener(v -> {
-            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_NORMAL);
-            TextFormatting.setAlignmentSelected(alignLeft, alignCenter, alignRight);
-            currentAlignment = Layout.Alignment.ALIGN_NORMAL;
-        });
-
-        alignCenter.setOnClickListener(v -> {
-            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_CENTER);
-            TextFormatting.setAlignmentSelected(alignCenter, alignLeft, alignRight);
-        });
-
-        alignRight.setOnClickListener(v -> {
-            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_OPPOSITE);
-            TextFormatting.setAlignmentSelected(alignRight, alignLeft, alignCenter);
-        });
+//        alignLeft.setOnClickListener(v -> {
+//            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_NORMAL);
+//            TextFormatting.setAlignmentSelected(alignLeft, alignCenter, alignRight);
+//            currentAlignment = Layout.Alignment.ALIGN_NORMAL;
+//        });
+//
+//        alignCenter.setOnClickListener(v -> {
+//            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_CENTER);
+//            TextFormatting.setAlignmentSelected(alignCenter, alignLeft, alignRight);
+//        });
+//
+//        alignRight.setOnClickListener(v -> {
+//            TextFormatting.applyAlignment(noteInput, Layout.Alignment.ALIGN_OPPOSITE);
+//            TextFormatting.setAlignmentSelected(alignRight, alignLeft, alignCenter);
+//        });
 
         boldBtn.setOnClickListener(v -> {
-            TextFormatting.toggleButton(boldBtn);
-            TextFormatting.applyBold(noteInput);
+            boolean isApplied = TextFormatting.toggleBold(noteInput);
+            boldBtn.setSelected(isApplied);
+            if (isApplied) {
+                italicBtn.setSelected(false);
+            }
         });
 
         italicBtn.setOnClickListener(v -> {
-            TextFormatting.toggleButton(italicBtn);
-            TextFormatting.applyItalic(noteInput);
+            boolean isApplied = TextFormatting.toggleItalic(noteInput);
+            italicBtn.setSelected(isApplied);
+            if (isApplied) {
+                boldBtn.setSelected(false);
+            }
         });
 
         underlineBtn.setOnClickListener(v -> {
@@ -505,20 +512,20 @@ public class NoteActivity extends AppCompatActivity {
                 isSpanFullyApplied(text, start, end, StrikethroughSpan.class)
         );
 
-        ImageButton alignLeft = findViewById(R.id.align_left);
-        ImageButton alignCenter = findViewById(R.id.align_center);
-        ImageButton alignRight = findViewById(R.id.align_right);
-
-        Layout layout = noteInput.getLayout();
-        if (layout != null && start < noteInput.length()) {
-            int line = layout.getLineForOffset(start);
-            Layout.Alignment alignment = layout.getParagraphAlignment(line);
-            currentAlignment = alignment;
-
-            alignLeft.setSelected(alignment == Layout.Alignment.ALIGN_NORMAL);
-            alignCenter.setSelected(alignment == Layout.Alignment.ALIGN_CENTER);
-            alignRight.setSelected(alignment == Layout.Alignment.ALIGN_OPPOSITE);
-        }
+//        ImageButton alignLeft = findViewById(R.id.align_left);
+//        ImageButton alignCenter = findViewById(R.id.align_center);
+//        ImageButton alignRight = findViewById(R.id.align_right);
+//
+//        Layout layout = noteInput.getLayout();
+//        if (layout != null && start < noteInput.length()) {
+//            int line = layout.getLineForOffset(start);
+//            Layout.Alignment alignment = layout.getParagraphAlignment(line);
+//            currentAlignment = alignment;
+//
+//            alignLeft.setSelected(alignment == Layout.Alignment.ALIGN_NORMAL);
+//            alignCenter.setSelected(alignment == Layout.Alignment.ALIGN_CENTER);
+//            alignRight.setSelected(alignment == Layout.Alignment.ALIGN_OPPOSITE);
+//        }
     }
 
     private boolean isSpanFullyApplied(Editable text, int start, int end, Class<?> spanClass) {
@@ -699,8 +706,9 @@ public class NoteActivity extends AppCompatActivity {
     private void saveNote(String format) {
         NotesDatabaseHelper dbHelper = new NotesDatabaseHelper(this);
 
-        String text = noteInput.getText().toString().trim();
-        String title = extractTitleFromText(text).trim();
+        String text = Html.toHtml(noteInput.getText(), Html.TO_HTML_PARAGRAPH_LINES_CONSECUTIVE);
+        String title = titleInput.getText().toString().trim();
+
 
         if (title.isEmpty() && text.isEmpty()) {
             Toast.makeText(this, "Пустая заметка не сохранена", Toast.LENGTH_SHORT).show();
@@ -756,7 +764,7 @@ public class NoteActivity extends AppCompatActivity {
 
         if (note != null) {
             titleInput.setText(note.getTitle());
-            noteInput.setText(note.getText());
+            noteInput.setText(Html.fromHtml(note.getText(), Html.FROM_HTML_MODE_LEGACY));
             originalTitle = note.getTitle();
             originalText = note.getText();
 

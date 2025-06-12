@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.text.Html;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -176,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
         TextView snippetView = new TextView(this);
         String snippet = note.getText() != null ? note.getText() : "";
         if (snippet.length() > 100) snippet = snippet.substring(0, 100) + "...";
-        snippetView.setText(snippet);
+        snippetView.setText(Html.fromHtml(snippet, Html.FROM_HTML_MODE_LEGACY));
 
         card.addView(titleView);
         card.addView(dateView);

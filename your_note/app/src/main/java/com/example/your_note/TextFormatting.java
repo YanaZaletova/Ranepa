@@ -37,12 +37,60 @@ public class TextFormatting {
         }
     }
 
-    public static void applyBold(EditText editText) {
-        applyStyleSpan(editText, new StyleSpan(Typeface.BOLD), StyleSpan.class);
+    public static boolean toggleBold(EditText editText) {
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+        if (start == end) return false;
+
+        Editable editable = editText.getText();
+        boolean hasBold = false;
+
+        StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.BOLD) {
+                editable.removeSpan(span);
+                hasBold = true;
+            }
+        }
+
+        if (!hasBold) {
+            for (StyleSpan span : spans) {
+                if (span.getStyle() == Typeface.ITALIC) {
+                    editable.removeSpan(span);
+                }
+            }
+            editable.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        return !hasBold;
     }
 
-    public static void applyItalic(EditText editText) {
-        applyStyleSpan(editText, new StyleSpan(Typeface.ITALIC), StyleSpan.class);
+    public static boolean toggleItalic(EditText editText) {
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+        if (start == end) return false;
+
+        Editable editable = editText.getText();
+        boolean hasItalic = false;
+
+        StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.ITALIC) {
+                editable.removeSpan(span);
+                hasItalic = true;
+            }
+        }
+
+        if (!hasItalic) {
+            for (StyleSpan span : spans) {
+                if (span.getStyle() == Typeface.BOLD) {
+                    editable.removeSpan(span);
+                }
+            }
+            editable.setSpan(new StyleSpan(Typeface.ITALIC), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+
+        return !hasItalic;
     }
 
     public static void applyUnderline(EditText editText) {
@@ -97,6 +145,53 @@ public class TextFormatting {
             editable.setSpan(newSpan, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
     }
+
+    public static void applyExclusiveBold(EditText editText) {
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+        if (start == end) return;
+
+        Editable editable = editText.getText();
+
+        StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.ITALIC) {
+                editable.removeSpan(span);
+            }
+        }
+
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.BOLD) {
+                editable.removeSpan(span);
+            }
+        }
+
+        editable.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
+    public static void applyExclusiveItalic(EditText editText) {
+        int start = editText.getSelectionStart();
+        int end = editText.getSelectionEnd();
+        if (start == end) return;
+
+        Editable editable = editText.getText();
+
+        StyleSpan[] spans = editable.getSpans(start, end, StyleSpan.class);
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.BOLD) {
+                editable.removeSpan(span);
+            }
+        }
+
+        for (StyleSpan span : spans) {
+            if (span.getStyle() == Typeface.ITALIC) {
+                editable.removeSpan(span);
+            }
+        }
+
+        editable.setSpan(new StyleSpan(Typeface.ITALIC), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+    }
+
 
     public static void toggleButton(ImageButton button) {
         button.setSelected(!button.isSelected());

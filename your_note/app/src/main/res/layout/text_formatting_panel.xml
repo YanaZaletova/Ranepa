@@ -15,40 +15,40 @@
         android:layout_gravity="center_horizontal"
         android:orientation="horizontal">
 
-        <LinearLayout
-            android:id="@+id/alignment_group"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="@drawable/bg_format_group"
-            android:padding="8dp"
-            android:layout_margin="4dp"
-            android:gravity="center">
+<!--        <LinearLayout-->
+<!--            android:id="@+id/alignment_group"-->
+<!--            android:layout_width="match_parent"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:orientation="horizontal"-->
+<!--            android:background="@drawable/bg_format_group"-->
+<!--            android:padding="8dp"-->
+<!--            android:layout_margin="4dp"-->
+<!--            android:gravity="center">-->
 
-            <ImageButton
-                android:id="@+id/align_left"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:scaleType="centerInside"
-                android:src="@drawable/left_alignment"
-                android:background="@drawable/bg_button_selector"/>
+<!--            <ImageButton-->
+<!--                android:id="@+id/align_left"-->
+<!--                android:layout_width="30dp"-->
+<!--                android:layout_height="30dp"-->
+<!--                android:scaleType="centerInside"-->
+<!--                android:src="@drawable/left_alignment"-->
+<!--                android:background="@drawable/bg_button_selector"/>-->
 
-            <ImageButton
-                android:id="@+id/align_center"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:scaleType="center"
-                android:src="@drawable/center_alignment"
-                android:background="@drawable/bg_button_selector"/>
+<!--            <ImageButton-->
+<!--                android:id="@+id/align_center"-->
+<!--                android:layout_width="30dp"-->
+<!--                android:layout_height="30dp"-->
+<!--                android:scaleType="center"-->
+<!--                android:src="@drawable/center_alignment"-->
+<!--                android:background="@drawable/bg_button_selector"/>-->
 
-            <ImageButton
-                android:id="@+id/align_right"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
-                android:scaleType="center"
-                android:src="@drawable/right_alignment"
-                android:background="@drawable/bg_button_selector"/>
-        </LinearLayout>
+<!--            <ImageButton-->
+<!--                android:id="@+id/align_right"-->
+<!--                android:layout_width="30dp"-->
+<!--                android:layout_height="30dp"-->
+<!--                android:scaleType="center"-->
+<!--                android:src="@drawable/right_alignment"-->
+<!--                android:background="@drawable/bg_button_selector"/>-->
+<!--        </LinearLayout>-->
 
         <LinearLayout
             android:id="@+id/style_group"
